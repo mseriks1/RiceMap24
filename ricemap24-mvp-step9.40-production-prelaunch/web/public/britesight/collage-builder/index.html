@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BriteSight Collage Builder</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<style>
+.britesightBackBar{position:fixed;top:12px;left:12px;z-index:99999;font:600 13px/1.2 Inter,Arial,sans-serif;background:rgba(8,12,24,.82);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:9px 12px;text-decoration:none;box-shadow:0 10px 30px rgba(0,0,0,.24);backdrop-filter:blur(10px)}
+.britesightBackBar:hover{background:rgba(15,23,42,.95)}
+</style>
+<a class="britesightBackBar" href="javascript:history.length>1?history.back():location.href='/'">← Back to RiceMap24</a>
+
+<div class="app">
+  <aside class="sidebar">
+    <img class="brand-logo-full" src="BriteSight-CollageBuilder.png" alt="BriteSight Collage Builder logo" />
+    
+    
+
+    <div class="section">
+      <h2>1. Images</h2>
+      <label for="files">Choose images</label>
+      <input id="files" type="file" accept="image/*" multiple style="display:none;" />
+      <div class="custom-file-row">
+        <button id="filesButton" type="button" class="secondary">Choose files</button>
+        <span id="filesLabel" class="custom-file-label">No files selected</span>
+      </div>
+      <div class="small" style="margin-top:8px">Load many images. Then choose exactly how many the collage should use, plus a design style.</div>
+      <div id="thumbs" class="thumbs"></div>
+    </div>
+
+    <div class="section">
+      <h2>2. Layout and collage generator</h2>
+      <div class="row">
+        <div>
+          <label for="imageCount">Images in collage</label>
+          <input id="imageCount" type="number" min="1" max="40" step="1" value="6" />
+        </div>
+        <div>
+          <label for="layoutStyle">Design style</label>
+          <select id="layoutStyle">
+            <option value="gridEqual">Equal Grid</option>
+            <option value="grid">Balanced Grid</option>
+            <option value="mosaic" selected>Mosaic</option>
+            <option value="storyboard">Storyboard</option>
+            <option value="strips">Strips</option>
+            <option value="featured">1 Large + Small</option>
+            <option value="twoLargeSmall">2 Large + Small</option>
+            <option value="heroTopSmall">Top Hero + Small</option>
+            <option value="pairFocus">2 Focus + Supporting</option>
+            <option value="sideRail">Side Rail</option>
+            <option value="centerHero">Center Hero</option>
+            <option value="triptych">Triptych</option>
+            <option value="staggered">Staggered Stack</option>
+            <option value="magazine">Magazine</option>
+            <option value="filmstrip">Filmstrip</option>
+            <option value="scattered">Scattered Cards</option>
+            <option value="panoramaBands">Panorama Bands</option>
+            <option value="offsetColumns">Offset Columns</option>
+            <option value="cornerFocus">Corner Focus</option>
+            <option value="splitEditorial">Split Editorial</option>
+            <option value="galleryWall">Gallery Wall</option>
+            <option value="contactSheet">Contact Sheet</option>
+            <option value="cascade">Cascade</option>
+            <option value="circleSplit">Circle Split</option>
+            <option value="circleInCircle">Circle in Circle</option>
+            <option value="triangleSplit3">Triangle Split 3</option>
+            <option value="triangleMosaic">Triangle Mosaic</option>
+            <option value="triangleInTriangle">Triangle in Triangle</option>
+            <option value="hexagonInHexagon">Hexagon in Hexagon</option>
+            <option value="polaroid">Polaroid</option>
+            <option value="scrapbook">Scrapbook</option>
+            <option value="customSplit">Custom Split Draw</option>
+            <option value="snapDraw">Snap Draw Mosaic</option>
+          </select>
+        </div>
+      </div>
+
+      <label for="oneClickTemplate" style="margin-top:10px">One-click template</label>
+      <select id="oneClickTemplate">
+        <option value="none">None</option>
+        <option value="memoryBook">Memory Book</option>
+        <option value="socialStory">Social Story</option>
+        <option value="romanticBoard">Romantic Board</option>
+        <option value="cleanShowcase">Clean Showcase</option>
+        <option value="vintageAlbum">Vintage Album</option>
+      </select>
+      <div class="inline" style="margin-top:10px">
+        <button id="applyOneClick" class="secondary">Apply template</button>
+        <button id="shuffleLayout" class="secondary">Shuffle layout</button>
+      </div>
+      <div class="small" style="margin-top:10px">Examples: all images equal size, 1 large + small images, 2 large + 2 small, top hero + gallery, and more.</div>
+
+      <div class="row" style="margin-top:10px">
+        <div>
+          <label for="outW">Width</label>
+          <input id="outW" type="number" min="400" step="10" value="1800" />
+        </div>
+        <div>
+          <label for="outH">Height</label>
+          <input id="outH" type="number" min="400" step="10" value="1200" />
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:10px">
+        <div>
+          <label for="gap">Gap</label>
+          <input id="gap" type="number" min="0" max="200" step="1" value="24" />
+        </div>
+        <div>
+          <label for="cornerRadius">Corners</label>
+          <input id="cornerRadius" type="number" min="0" max="80" step="1" value="20" />
+        </div>
+      </div>
+
+      <div style="margin-top:10px">
+        <label for="shapeInnerSize">Inner shape size <span class="small">(0 = all the way to center)</span></label>
+        <input id="shapeInnerSize" type="range" min="0" max="90" step="1" value="0" />
+      </div>
+
+      <div class="row" style="margin-top:10px">
+        <div>
+          <label for="backgroundMode">Background type</label>
+          <select id="backgroundMode">
+            <option value="solid">Solid</option>
+            <option value="gradient" selected>Gradient</option>
+            <option value="paper">Paper</option>
+          </select>
+        </div>
+        <div>
+          <label for="fitMode">Fit mode</label>
+          <select id="fitMode">
+            <option value="contain">Contain</option>
+            <option value="cover" selected>Cover</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:10px">
+        <div>
+          <label for="bg">Color 1</label>
+          <input id="bg" type="color" value="#fff7ed" />
+          <div id="bgPreview" class="color-preview"></div>
+          <div id="bgPalette" class="color-palette"></div>
+        </div>
+        <div>
+          <label for="bg2">Color 2</label><label class="small" style="margin-bottom:8px;"><input id="bg2None" type="checkbox" /> No color</label>
+          <input id="bg2" type="color" value="#f5f3ff" />
+          <div id="bg2Preview" class="color-preview"></div>
+          <div id="bg2Palette" class="color-palette"></div>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:10px">
+        <div>
+          <label for="frameColor">Frame color</label><label class="small" style="margin-bottom:8px;"><input id="frameColorNone" type="checkbox" /> No color</label>
+          <input id="frameColor" type="color" value="#ffffff" />
+          <div id="frameColorPreview" class="color-preview"></div>
+          <div id="frameColorPalette" class="color-palette"></div>
+        </div>
+        <div>
+          <label for="frameWidth">Frame width</label>
+          <input id="frameWidth" type="number" min="0" max="60" step="1" value="8" />
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:10px">
+        <div>
+          <label for="themePack">Theme pack</label>
+          <select id="themePack">
+            <option value="custom">Custom</option>
+            <option value="warmMemory">Warm Memory</option>
+            <option value="cleanModern">Clean Modern</option>
+            <option value="romantic">Romantic</option>
+            <option value="vintageScrapbook">Vintage Scrapbook</option>
+            <option value="minimalBW">Minimal Black & White</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:end;">
+          <button id="applyThemePack" class="secondary">Apply theme</button>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:10px">
+        <div>
+          <label for="shadowStrength">Shadow</label>
+          <input id="shadowStrength" type="range" min="0" max="40" step="1" value="18" />
+        </div>
+        <div>
+          <label for="paperGrain">Paper grain</label>
+          <input id="paperGrain" type="range" min="0" max="100" step="1" value="18" />
+        </div>
+      </div>
+    </div>
+
+    <div class="section" id="customSplitSection">
+      <h2>2b. Custom split draw</h2>
+      <div class="small">Build your own collage rooms by drawing split lines inside a rectangle. Each split cuts one room into two. This is a first version with straight vertical or horizontal cuts.</div>
+      <label class="small" style="margin-top:10px;"><input id="customSplitDrawMode" type="checkbox" /> Draw split mode</label>
+      <div class="inline" style="margin-top:10px">
+        <button id="customSplitReset" class="secondary" type="button">Reset rooms</button>
+      </div>
+      <div class="small" style="margin-top:8px">How to use: choose <strong>Custom Split Draw</strong>, turn on draw mode, then drag inside one room. Mostly sideways = vertical split. Mostly up/down = horizontal split.</div>
+    </div>
+
+
+    <div class="section" id="snapDrawSection">
+      <h2>2c. Snap draw mosaic</h2>
+      <div class="small">Draw a free split line inside the rectangle. The start and end points snap to edges, corners, and existing split points so you can build more organic collage rooms.</div>
+      <label class="small" style="margin-top:10px;"><input id="snapDrawMode" type="checkbox" /> Snap draw mode</label>
+      <div class="inline" style="margin-top:10px">
+        <button id="snapDrawReset" class="secondary" type="button">Reset mosaic</button>
+      </div>
+      <div class="small" style="margin-top:8px">How to use: choose <strong>Snap Draw Mosaic</strong>, turn on snap draw mode, then drag across one room. The line snaps to that room’s edges or vertices and cuts it into two new rooms.</div>
+    </div>
+
+    <div class="section">
+      <h2>3. Selected image</h2>
+      <div class="small">Click an image in the list or directly on the canvas.</div>
+      <label class="small" style="margin-top:10px;"><input id="swapOnDrag" type="checkbox" checked /> Swap images by dragging one frame onto another</label>
+      <label for="zoom" style="margin-top:10px">Zoom</label>
+      <input id="zoom" type="range" min="0.2" max="4" step="0.01" value="1" />
+      <div class="row" style="margin-top:10px">
+        <div><label for="offsetX">Move X</label><input id="offsetX" type="number" step="1" value="0" /></div>
+        <div><label for="offsetY">Move Y</label><input id="offsetY" type="number" step="1" value="0" /></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div>
+          <label for="nudgeStep">Nudge step</label>
+          <input id="nudgeStep" type="number" min="1" step="1" value="10" />
+        </div>
+        <div>
+          <label>Quick adjust</label>
+          <div class="nudge-grid">
+            <button id="moveUp" type="button">↑</button>
+            <button id="moveLeft" type="button">←</button>
+            <button id="moveRight" type="button">→</button>
+            <button id="moveDown" type="button">↓</button>
+          </div>
+        </div>
+      </div>
+      <div class="inline compact-inline" style="margin-top:10px">
+        <button id="zoomOutBtn" type="button">Zoom -</button><button id="zoomInBtn" type="button">Zoom +</button><button id="centerImageBtn" type="button">Center image</button>
+      </div>
+      <div class="small" style="margin-top:8px">Tip: hold Shift while nudging for a bigger move. You can also use arrow keys when you are not typing in a field.</div>
+      <div class="row" style="margin-top:10px">
+        <div><label for="rotation">Rotation</label><input id="rotation" type="number" step="0.1" value="0" /></div>
+        <div><label for="opacity">Opacity</label><input id="opacity" type="range" min="0.1" max="1" step="0.01" value="1" /></div>
+      </div>
+      <div class="inline" style="margin-top:10px">
+        <button id="bringFront">Bring front</button><button id="sendBack">Send back</button>
+      </div>
+      <div class="inline" style="margin-top:10px">
+        <button id="resetImage">Reset selected</button><button id="resetAll">Reset all</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>4. Text</h2>
+      <div class="inline">
+        <button id="addText" class="secondary">Add text</button><button id="removeText">Delete selected text</button>
+      </div>
+      <div id="textList" class="text-list"></div>
+      <div class="divider"></div>
+      <label for="textPreset">Text style</label>
+      <select id="textPreset">
+        <option value="custom">Custom</option>
+        <option value="title">Big Title</option>
+        <option value="script">Script / Signature</option>
+        <option value="poster">Poster</option>
+        <option value="caption">Caption</option>
+      </select>
+      <label for="textContent" style="margin-top:10px">Text</label>
+      <textarea id="textContent" placeholder="Type text here"></textarea>
+      <div class="row" style="margin-top:10px">
+        <div><label for="fontFamily">Font</label>
+          <select id="fontFamily">
+            <option value='Arial, Helvetica, sans-serif'>Arial</option>
+            <option value='"Trebuchet MS", sans-serif'>Trebuchet MS</option>
+            <option value='Georgia, serif'>Georgia</option>
+            <option value='"Times New Roman", serif'>Times New Roman</option>
+            <option value='"Courier New", monospace'>Courier New</option>
+            <option value='"Brush Script MT", cursive'>Brush Script</option>
+            <option value='"Segoe Script", cursive'>Segoe Script</option>
+            <option value='Impact, sans-serif'>Impact</option>
+            <option value='"Palatino Linotype", serif'>Palatino</option>
+            <option value='"Lucida Handwriting", cursive'>Lucida Handwriting</option>
+          </select>
+        </div>
+        <div><label for="fontSize">Size</label><input id="fontSize" type="number" min="8" max="300" step="1" value="80" /></div>
+      </div>
+      <div class="row3" style="margin-top:10px">
+        <div><label for="textColor">Color</label><input id="textColor" type="color" value="#ffffff" /><div id="textColorPreview" class="color-preview"></div><div id="textColorPalette" class="color-palette"></div></div>
+        <div><label for="textAlign">Alignment</label><select id="textAlign"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></div>
+        <div><label for="textOpacity">Opacity</label><input id="textOpacity" type="range" min="0.1" max="1" step="0.01" value="1" /></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div><label for="textX">Position X</label><input id="textX" type="number" step="1" value="120" /></div>
+        <div><label for="textY">Position Y</label><input id="textY" type="number" step="1" value="120" /></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div><label for="textRotation">Rotation</label><input id="textRotation" type="number" step="0.1" value="0" /></div>
+        <div><label for="textShadow">Shadow</label><input id="textShadow" type="range" min="0" max="40" step="1" value="12" /></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div><label for="strokeColor">Stroke color</label><label class="small" style="margin-bottom:8px;"><input id="strokeColorNone" type="checkbox" /> No color</label><input id="strokeColor" type="color" value="#000000" /><div id="strokeColorPreview" class="color-preview"></div><div id="strokeColorPalette" class="color-palette"></div></div>
+        <div><label for="strokeWidth">Stroke</label><input id="strokeWidth" type="number" min="0" max="20" step="1" value="0" /></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div><label><input id="boldToggle" type="checkbox" checked /> Bold</label></div>
+        <div><label><input id="italicToggle" type="checkbox" /> Italic</label></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>5. Decorative elements</h2>
+      <div class="inline">
+        <button id="addTape" class="pink">Tape</button><button id="addHeart">Heart</button><button id="addStar">Star</button><button id="addCircle">Circle</button>
+      </div>
+      <div class="inline" style="margin-top:10px"><button id="removeDeco">Delete selected decoration</button></div>
+      <div id="decoList" class="deco-list"></div>
+      <div class="divider"></div>
+      <div class="row">
+        <div><label for="decoColor">Decoration color</label><label class="small" style="margin-bottom:8px;"><input id="decoColorNone" type="checkbox" /> No color</label><input id="decoColor" type="color" value="#f9a8d4" /><div id="decoColorPreview" class="color-preview"></div><div id="decoColorPalette" class="color-palette"></div></div>
+        <div><label for="decoOpacity">Opacity</label><input id="decoOpacity" type="range" min="0.1" max="1" step="0.01" value="0.9" /></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div><label for="decoX">Position X</label><input id="decoX" type="number" step="1" value="100" /></div>
+        <div><label for="decoY">Position Y</label><input id="decoY" type="number" step="1" value="100" /></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div><label for="decoW">Width</label><input id="decoW" type="number" step="1" value="140" /></div>
+        <div><label for="decoH">Height</label><input id="decoH" type="number" step="1" value="40" /></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div><label for="decoRotation">Rotation</label><input id="decoRotation" type="number" step="0.1" value="0" /></div>
+        <div><label for="decoStroke">Stroke</label><input id="decoStroke" type="number" min="0" max="10" step="1" value="0" /></div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="toolbar">
+      <button id="applyLayoutDefaults">Apply layout defaults</button>
+      <button id="renderBtn">Refresh</button>
+      <button id="undoBtn">Undo</button>
+      <button id="redoBtn">Redo</button>
+      <button id="downloadBtn" class="primary">Download PNG</button>
+      <button id="saveProjectBtn">Save project</button>
+      <button id="openProjectBtn" class="secondary">Open project</button>
+      <button id="adjustImageModeBtn">Adjust image: Off</button>
+      <input id="openProjectInput" type="file" accept=".collage,application/json" style="display:none;" />
+      <label class="small" style="display:flex;align-items:center;gap:8px;">Preview
+        <select id="previewMode" style="width:auto;padding:8px 10px;">
+          <option value="fit" selected>Fit</option><option value="fillWidth">Fill width</option><option value="actual">100%</option>
+        </select>
+      </label>
+      <label class="small" style="display:flex;align-items:center;gap:8px;">Zoom
+        <input id="previewZoom" type="range" min="0.3" max="2.2" step="0.05" value="1.15" style="width:180px;" />
+      </label>
+      <span class="small">Drag images, text, and decorations directly on the preview. Turn on Adjust image for easier crop movement and wheel zoom on the selected photo.</span>
+    </div>
+    <div class="canvas-wrap" id="canvasWrap">
+      <div id="canvasScaler" style="transform-origin:center center; display:inline-block;">
+        <canvas id="canvas" width="1800" height="1200"></canvas>
+      </div>
+    </div>
+  </main>
+</div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BriteSight Video Editor</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<style>
+.britesightBackBar{position:fixed;top:12px;left:12px;z-index:99999;font:600 13px/1.2 Inter,Arial,sans-serif;background:rgba(8,12,24,.82);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:9px 12px;text-decoration:none;box-shadow:0 10px 30px rgba(0,0,0,.24);backdrop-filter:blur(10px)}
+.britesightBackBar:hover{background:rgba(15,23,42,.95)}
+</style>
+<a class="britesightBackBar" href="javascript:history.length>1?history.back():location.href='/'">← Back to RiceMap24</a>
+
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-wrap">
+        <div class="brand-icon">▶</div>
+        <div>
+          <div class="brand-name"><span class="brite">Brite</span><span class="sight">Sight</span></div>
+          <div class="brand-sub">Video Editor</div>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <input id="projectName" class="project-name" placeholder="Project name" value="" />
+        <label class="btn ghost" for="mediaInput">Import media</label>
+        <input id="mediaInput" type="file" accept="video/*,image/*,audio/*,.mov,.mp4,.m4v,.webm,.jpg,.jpeg,.png,.gif,.mp3,.wav,.m4a" multiple hidden />
+        <button id="openExportPanelBtn" class="btn primary">Export video</button>
+        <button id="exportProjectBtn" class="btn ghost">Project JSON</button>
+      </div>
+    </header>
+
+    <main class="main-grid">
+      <aside class="panel left-panel">
+        <h3>1. Import</h3>
+
+        <div id="dropZone" class="drop-zone">
+          <div class="drop-title">Drop files here</div>
+          <div class="drop-sub">Video, image or audio. MOV is accepted.</div>
+        </div>
+
+        <div id="importProgressBox" class="import-progress-box hidden" aria-live="polite">
+          <div class="import-progress-head">
+            <div>Importing media</div>
+            <div id="importProgressPercent">0%</div>
+          </div>
+          <div class="import-progress-track"><div id="importProgressFill" class="import-progress-fill"></div></div>
+          <div id="importProgressFile" class="import-progress-file">Preparing file…</div>
+          <div id="importProgressStatus" class="import-progress-status">Waiting…</div>
+        </div>
+
+        <div class="section-divider"></div>
+        <h3>2. Format & canvas</h3>
+
+        <div class="section-block">
+          <div class="label">Format</div>
+          <div class="format-grid">
+            <button class="format-btn active" data-format="9:16">9:16</button>
+            <button class="format-btn" data-format="1:1">1:1</button>
+            <button class="format-btn" data-format="16:9">16:9</button>
+            <button class="format-btn" data-format="4:5">4:5</button>
+          </div>
+        </div>
+
+        <div class="section-divider"></div>
+        <h3>3. Media & content</h3>
+
+        <div class="section-block">
+          <div class="label">Media library</div>
+          <div id="libraryList" class="library-list"></div>
+        </div>
+
+        <div class="section-block">
+          <div class="label">Backgrounds</div>
+          <div class="stack-buttons">
+            <button id="addBackgroundBtn" class="btn ghost full">Add blank background</button>
+          </div>
+          <div class="muted small top-gap">Use blank backgrounds as title screens, separators or simple color cards.</div>
+        </div>
+
+        <div class="section-block">
+          <div class="label">Text & overlays</div>
+          <div class="stack-buttons">
+            <button id="addTextBtn" class="btn ghost full">Add text slide</button>
+            <button id="addOverlayTextBtn" class="btn ghost full">Add text on image/video</button>
+          </div>
+          <div class="muted small top-gap">Create a standalone text slide or place text directly over the selected image/video clip.</div>
+        </div>
+
+        <div class="section-divider"></div>
+        <div class="embedded-inspector">
+          <h3>4. Clip / timeline</h3>
+          <div id="inspectorEmpty" class="empty-state">No clip selected.</div>
+          <div id="inspectorContent" class="inspector-content hidden">
+          <div class="section-block compact">
+            <div class="label">Selected clip</div>
+            <div id="clipNameLabel" class="selected-clip-name"></div>
+            <div id="clipDurationLabel" class="muted small"></div>
+            <div id="clipSupportLabel" class="muted small"></div>
+          </div>
+
+          <div class="section-block compact">
+            <div class="label">Timing</div>
+            <div class="slider-row"><span>Trim start</span><span id="trimStartValue">0.0s</span></div>
+            <input id="trimStart" type="range" min="0" max="10" step="0.1" value="0" />
+            <div class="slider-row"><span>Trim end / image duration</span><span id="trimEndValue">0.0s</span></div>
+            <input id="trimEnd" type="range" min="0.2" max="10" step="0.1" value="1" />
+          </div>
+
+          <div id="textBackgroundInspector" class="section-block compact hidden">
+            <div id="textInspectorLabel" class="label">Text & background</div>
+            <label class="field-label">Text</label>
+            <textarea id="clipText" class="text-area" rows="3" placeholder="Write text here"></textarea>
+            <div class="control-row two">
+              <label>Font
+                <select id="clipFont" class="select compact-select">
+                  <option value="Inter, Arial, sans-serif">Clean sans</option>
+                  <option value="Arial, Helvetica, sans-serif">Classic sans</option>
+                  <option value="Avenir Next, Avenir, sans-serif">Modern soft</option>
+                  <option value="Helvetica Neue, Helvetica, Arial, sans-serif">Swiss clean</option>
+                  <option value="Trebuchet MS, sans-serif">Soft rounded</option>
+                  <option value="Verdana, Geneva, sans-serif">Readable rounded</option>
+                  <option value="Gill Sans, Gill Sans MT, Calibri, sans-serif">Humanist sans</option>
+                  <option value="Georgia, serif">Editorial serif</option>
+                  <option value="Times New Roman, Times, serif">Classic serif</option>
+                  <option value="Palatino Linotype, Palatino, serif">Book serif</option>
+                  <option value="Baskerville, Georgia, serif">Elegant serif</option>
+                  <option value="Courier New, monospace">Mono</option>
+                  <option value="Menlo, Monaco, Consolas, monospace">Tech mono</option>
+                  <option value="Impact, Haettenschweiler, sans-serif">Bold impact</option>
+                  <option value="Arial Black, Gadget, sans-serif">Heavy headline</option>
+                  <option value="Brush Script MT, cursive">Script</option>
+                  <option value="Comic Sans MS, Comic Sans, cursive">Casual handwritten</option>
+                </select>
+              </label>
+              <label>Motion
+                <select id="clipTextMotion" class="select compact-select">
+                  <option value="none">None</option>
+                  <option value="fade-in">Fade in</option>
+                  <option value="slide-up">Slide up</option>
+                  <option value="slow-zoom">Slow zoom</option>
+                  <option value="drift">Gentle drift</option>
+                </select>
+              </label>
+            </div>
+            <div class="control-row three">
+              <label>Text color<input id="clipTextColor" type="color" value="#ffffff" /></label>
+              <label id="clipBgColorWrap">Background<input id="clipBgColor" type="color" value="#111827" /></label>
+              <label>Size<input id="clipFontSize" type="number" min="20" max="140" step="2" value="56" /></label>
+            </div>
+            <div id="textOverlayHint" class="muted small top-gap">For image/video clips, this becomes text over the clip.</div>
+          </div>
+
+            <div class="section-divider slim"></div>
+            <h3 class="subsection-title">5. Layout & motion</h3>
+
+          <div class="section-block compact">
+            <div class="label">Crop & zoom</div>
+            <div class="slider-row"><span>Zoom</span><span id="cropZoomValue">1.00x</span></div>
+            <input id="cropZoom" type="range" min="1" max="2" step="0.01" value="1" />
+            <div class="slider-row"><span>Position X</span><span id="cropXValue">0</span></div>
+            <input id="cropX" type="range" min="-20" max="20" step="1" value="0" />
+            <div class="slider-row"><span>Position Y</span><span id="cropYValue">0</span></div>
+            <input id="cropY" type="range" min="-20" max="20" step="1" value="0" />
+          </div>
+          <div id="speedInspector" class="section-block compact hidden">
+            <div class="label">Speed ramp</div>
+            <div class="control-row two">
+              <label>Clip speed
+                <select id="clipSpeed" class="select compact-select">
+                  <option value="0.25">0.25x very slow</option>
+                  <option value="0.5">0.5x slow</option>
+                  <option value="0.75">0.75x slight slow</option>
+                  <option value="1">1x normal</option>
+                  <option value="1.25">1.25x slight fast</option>
+                  <option value="1.5">1.5x fast</option>
+                  <option value="2">2x faster</option>
+                  <option value="4">4x very fast</option>
+                </select>
+              </label>
+              <label>Ramp
+                <select id="speedRamp" class="select compact-select">
+                  <option value="none">None</option>
+                  <option value="normal-slow">Normal to slow</option>
+                  <option value="slow-normal">Slow to normal</option>
+                  <option value="normal-fast">Normal to fast</option>
+                  <option value="fast-normal">Fast to normal</option>
+                  <option value="fast-slow">Fast to slow</option>
+                  <option value="slow-fast">Slow to fast</option>
+                </select>
+              </label>
+            </div>
+            <div class="control-row two">
+              <label>Strength
+                <select id="speedRampStrength" class="select compact-select">
+                  <option value="soft">Soft</option>
+                  <option value="medium">Medium</option>
+                  <option value="strong">Strong</option>
+                </select>
+              </label>
+              <label>Timing
+                <select id="speedRampTiming" class="select compact-select">
+                  <option value="full">Full clip</option>
+                  <option value="start">Start</option>
+                  <option value="middle">Middle</option>
+                  <option value="end">End</option>
+                  <option value="custom">Custom time range</option>
+                </select>
+              </label>
+            </div>
+            <div id="speedRampCustomControls" class="control-row two top-gap hidden">
+              <label>Ramp start (sec)
+                <input id="speedRampStart" type="number" min="0" step="0.1" value="0" />
+              </label>
+              <label>Ramp end (sec)
+                <input id="speedRampEnd" type="number" min="0" step="0.1" value="3" />
+              </label>
+            </div>
+            <div class="muted small top-gap">Custom time range uses seconds inside the selected clip. Export uses the same speed mapping as preview.</div>
+          </div>
+
+          <div id="kenBurnsInspector" class="section-block compact hidden">
+            <div class="label">Ken Burns</div>
+            <div class="control-row two">
+              <label>Motion
+                <select id="kenBurnsMotion" class="select compact-select">
+                  <option value="none">None</option>
+                  <option value="zoom-in">Zoom in</option>
+                  <option value="zoom-out">Zoom out</option>
+                  <option value="move-left">Move left</option>
+                  <option value="move-right">Move right</option>
+                  <option value="move-up">Move up</option>
+                  <option value="move-down">Move down</option>
+                  <option value="zoom-in-right">Zoom in + move right</option>
+                  <option value="zoom-in-left">Zoom in + move left</option>
+                  <option value="zoom-out-up">Zoom out + move up</option>
+                  <option value="zoom-out-down">Zoom out + move down</option>
+                </select>
+              </label>
+              <label>Strength
+                <input id="kenBurnsStrength" type="number" min="0" max="100" step="1" value="35" />
+              </label>
+            </div>
+            <div class="muted small top-gap">Adds slow zoom or movement across the clip duration. Works on images and videos.</div>
+          </div>
+
+            <div class="section-divider slim"></div>
+            <h3 class="subsection-title">6. Adjustments</h3>
+
+          <div class="section-block compact">
+            <div class="label">Basic adjustments</div>
+            <div class="slider-row"><span>Brightness</span><span id="brightnessValue">0</span></div>
+            <input id="brightness" type="range" min="-100" max="100" step="1" value="0" />
+            <div class="slider-row"><span>Contrast</span><span id="contrastValue">0</span></div>
+            <input id="contrast" type="range" min="-100" max="100" step="1" value="0" />
+            <div class="slider-row"><span>Saturation</span><span id="saturationValue">0</span></div>
+            <input id="saturation" type="range" min="-100" max="100" step="1" value="0" />
+          </div>
+
+            <div class="section-divider slim"></div>
+            <h3 class="subsection-title">7. Filters / style</h3>
+
+          <div class="section-block compact">
+            <div class="label">Final look</div>
+            <select id="globalFilter" class="select">
+              <option>None</option>
+              <option>Soft Fade</option>
+              <option>Crisp Pop</option>
+              <option>Warm Social</option>
+              <option>Cool Fresh</option>
+              <option>Golden Hour</option>
+              <option>Food Pop</option>
+              <option>Moody Contrast</option>
+              <option>Soft Pastel</option>
+              <option>Vintage Warm</option>
+              <option>Clean Mono</option>
+            </select>
+            <div class="muted small top-gap">Applies a final look after the clip adjustments.</div>
+          </div>
+
+            <div class="section-divider slim"></div>
+            <h3 class="subsection-title">8. Transitions</h3>
+
+          <div class="section-block compact">
+            <div class="label">Transitions</div>
+            <div class="transition-grid">
+              <div>
+                <div class="slider-row"><span>In effect</span></div>
+                <select id="transitionInType" class="select compact-select">
+                  <option value="none">None</option>
+                  <option value="fade">Fade in</option>
+                  <option value="blur">Blur in</option>
+                  <option value="crossfade">Crossfade in</option>
+                  <option value="slide">Slide in</option>
+                  <option value="push">Push in</option>
+                  <option value="zoom">Zoom in</option>
+                  <option value="dip-black">Dip from black</option>
+                  <option value="dip-white">Dip from white</option>
+                  <option value="flash">Flash in</option>
+                </select>
+              </div>
+              <div>
+                <div class="slider-row"><span>Out effect</span></div>
+                <select id="transitionOutType" class="select compact-select">
+                  <option value="none">None</option>
+                  <option value="fade">Fade out</option>
+                  <option value="blur">Blur out</option>
+                  <option value="crossfade">Crossfade out</option>
+                  <option value="slide">Slide out</option>
+                  <option value="push">Push out</option>
+                  <option value="zoom">Zoom out</option>
+                  <option value="dip-black">Dip to black</option>
+                  <option value="dip-white">Dip to white</option>
+                  <option value="flash">Flash out</option>
+                </select>
+              </div>
+            </div>
+            <div class="slider-row"><span>In duration</span><span id="transitionInDurationValue">0.0s</span></div>
+            <input id="transitionInDuration" type="range" min="0" max="3" step="0.1" value="0" />
+            <div class="slider-row"><span>Out duration</span><span id="transitionOutDurationValue">0.0s</span></div>
+            <input id="transitionOutDuration" type="range" min="0" max="3" step="0.1" value="0" />
+            <div class="muted small">Linked transitions: crossfade, slide, push and zoom use the previous/next clip when available. Fade, blur, dip and flash remain lightweight edge effects.</div>
+          </div>
+
+            <div class="section-divider slim"></div>
+            <h3 class="subsection-title">9. Clip audio</h3>
+
+          <div class="section-block compact">
+            <div class="label">Clip volume</div>
+            <div class="slider-row"><span>Clip volume</span><span id="volumeValue">100%</span></div>
+            <input id="volume" type="range" min="0" max="200" step="1" value="100" />
+          </div>
+          </div>
+        </div>
+
+        <div class="section-divider"></div>
+        <h3>10. Music</h3>
+
+        <div class="section-block">
+          <div class="label">Music tracks (up to 5)</div>
+          <div class="stack-buttons">
+            <label class="btn ghost full" for="musicInput">Upload music track</label>
+            <input id="musicInput" type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg" hidden />
+          </div>
+          <select id="musicTrack" class="select top-gap">
+            <option>None</option>
+          </select>
+          <div class="slider-row"><span>Music volume</span><span id="musicVolumeLabel">55%</span></div>
+          <input id="musicVolume" type="range" min="0" max="100" step="1" value="55" />
+          <div class="music-mini-grid">
+            <div>
+              <div class="slider-row"><span>Fade in</span><span id="musicFadeInLabel">0.0s</span></div>
+              <input id="musicFadeIn" type="range" min="0" max="5" step="0.1" value="0" />
+            </div>
+            <div>
+              <div class="slider-row"><span>Fade out</span><span id="musicFadeOutLabel">0.0s</span></div>
+              <input id="musicFadeOut" type="range" min="0" max="5" step="0.1" value="0" />
+            </div>
+          </div>
+          <div class="label top-gap">Selected track timing</div>
+          <div class="music-time-grid">
+            <label>Start sec<input id="musicStartTime" class="input" type="number" min="0" step="0.1" value="0.0" /></label>
+            <label>Trim start<input id="musicTrimStart" class="input" type="number" min="0" step="0.1" value="0.0" /></label>
+            <label>Trim end<input id="musicTrimEnd" class="input" type="number" min="0.1" step="0.1" value="0.0" /></label>
+          </div>
+          <div class="muted small top-gap">Use these fields if dragging feels too sensitive or slow.</div>
+          <div class="stack-buttons top-gap">
+            <button id="removeMusicBtn" class="btn ghost full">Remove music</button>
+          </div>
+          <div id="musicInfo" class="muted small top-gap">Upload up to five music tracks. Select a track here, then drag and trim it in the music rows below.</div>
+        </div>
+
+        <div class="section-block music-library-panel">
+          <div class="label">BriteSight music library</div>
+          <div class="muted small">Upload the <strong>music</strong> folder and <strong>music-library.json</strong> to your CDN/storage. Then paste the public JSON URL here. The app loads only the small JSON list first; MP3 files load only when previewed or added.</div>
+          <div class="music-library-url-row top-gap">
+            <input id="musicLibraryUrl" class="input" type="url" placeholder="https://your-domain.com/britesight-music-library/music-library.json" />
+            <button id="saveMusicLibraryUrlBtn" class="btn ghost small">Save</button>
+          </div>
+          <div class="stack-buttons top-gap two-col-actions">
+            <button id="testMusicLibraryBtn" class="btn ghost full">Test / load library</button>
+            <button id="clearMusicLibraryBtn" class="btn ghost full">Clear</button>
+          </div>
+          <div id="musicLibraryStatus" class="muted small top-gap">Library not connected.</div>
+          <div id="musicLibraryBrowser" class="music-library-browser hidden">
+            <input id="musicLibrarySearch" class="input top-gap" type="search" placeholder="Search tracks…" />
+            <div class="music-library-filters top-gap">
+              <select id="musicLibraryType" class="select"><option value="all">All lengths</option><option value="long">Long</option><option value="short">Short</option></select>
+              <select id="musicLibraryCategory" class="select"><option value="all">All categories</option></select>
+            </div>
+            <div id="musicLibraryList" class="music-library-list top-gap"></div>
+          </div>
+        </div>
+
+        <div class="section-divider"></div>
+        <div class="section-block export-panel left-export-panel" id="exportPanel">
+          <div class="export-head">
+            <div>
+              <h3>11. Export</h3>
+              <p>Choose quality, format and social platform preset before rendering.</p>
+            </div>
+            <span id="exportPresetBadge" class="badge">Custom</span>
+          </div>
+          <div class="export-grid">
+            <div class="section-block compact export-card">
+              <div class="label">Social presets</div>
+              <div class="social-preset-grid">
+                <button class="social-preset active" data-social-preset="custom">Custom</button>
+                <button class="social-preset" data-social-preset="instagram-reels">Instagram Reels</button>
+                <button class="social-preset" data-social-preset="tiktok">TikTok</button>
+                <button class="social-preset" data-social-preset="youtube-shorts">YouTube Shorts</button>
+                <button class="social-preset" data-social-preset="facebook-feed">Facebook Feed</button>
+              </div>
+              <div class="muted small top-gap">Direct sharing uses the browser share dialog when supported. Otherwise the app downloads a ready file you can upload.</div>
+            </div>
+            <div class="section-block compact export-card">
+              <div class="label">File settings</div>
+              <div class="export-controls-grid">
+                <label>Format<select id="exportFormat" class="select compact-select"><option value="auto">Auto best</option><option value="mp4">MP4 when supported</option><option value="webm">WebM</option></select></label>
+                <label>Quality<select id="exportQuality" class="select compact-select"><option value="draft">Draft</option><option value="standard" selected>Standard</option><option value="high">High</option><option value="max">Max</option></select></label>
+                <label>FPS<select id="exportFps" class="select compact-select"><option value="24">24 fps</option><option value="30" selected>30 fps</option></select></label>
+                <label>Size<select id="exportSize" class="select compact-select"><option value="720">720p</option><option value="1080" selected>1080p</option><option value="1440">1440p</option></select></label>
+              </div>
+              <div class="slider-row top-gap"><span>Estimated bitrate</span><span id="exportBitrateLabel">8 Mbps</span></div>
+              <input id="exportBitrate" type="range" min="2" max="24" step="1" value="8" />
+            </div>
+          </div>
+          <div class="export-actions">
+            <button id="renderVideoBtn" class="btn primary">Render & download</button>
+            <button id="shareVideoBtn" class="btn ghost">Render for SoMe / Share</button>
+            <button id="exportPosterFrameBtn" class="btn ghost">Export current frame JPG</button>
+            <div id="exportStatus" class="preview-status">Export ready</div>
+          </div>
+        </div>
+      </aside>
+
+      <section class="center-column">
+        <div class="panel preview-panel">
+          <div class="preview-head">
+            <div>
+              <h3>Preview</h3>
+              <p>Sequence preview for the full timeline. Safari works best with MP4/MOV encoded as H.264.</p>
+            </div>
+            <div class="preview-badges">
+              <span id="formatBadge" class="badge">9:16</span>
+              <span id="filterBadge" class="badge">None</span>
+              <span id="playModeBadge" class="badge">Idle</span>
+            </div>
+          </div>
+
+          <div class="preview-stage">
+            <div id="previewFrame" class="preview-frame ratio-9-16">
+              <div id="previewMediaLayer" class="preview-media-layer">
+                <div id="previewSynthetic" class="synthetic-layer hidden"></div>
+                <video id="previewVideo" class="media-el hidden" playsinline preload="metadata"></video>
+                <img id="previewImage" class="media-el hidden" alt="Preview" />
+                <div id="transitionOverlay" class="transition-overlay hidden"></div>
+                <div id="previewTextOverlay" class="text-overlay-layer hidden"></div>
+                <div id="previewFallback" class="preview-fallback hidden">
+                  <div class="fallback-title">Preview not supported</div>
+                  <div class="fallback-sub">Safari cannot decode this source for live preview. Use MP4/MOV encoded as H.264, or continue with this source in Chrome.</div>
+                </div>
+              </div>
+              <div class="preview-overlay top-pill" id="previewTypeLabel">Video clip</div>
+              <div class="preview-overlay bottom-card">
+                <div id="previewName" class="preview-name">No clip selected</div>
+                <div class="preview-meta"><span id="previewZoom">Zoom 1.00x</span><span id="previewVolume">Vol 100%</span></div>
+              </div>
+              <button id="playPauseBtn" class="play-btn">▶</button>
+            </div>
+          </div>
+          <div class="transport-bar">
+            <button id="playTimelineBtn" class="btn ghost small">Play from Start</button>
+            <button id="playSelectedBtn" class="btn ghost small">Play selected</button>
+            <button id="playPauseBtn2" class="btn ghost small">Pause</button>
+            <button id="prevClipBtn" class="btn ghost small">Prev clip</button>
+            <button id="nextClipBtn" class="btn ghost small">Next clip</button>
+            <div id="timecode" class="timecode">0.0s / 0.0s</div>
+          </div>
+          <div class="timeline-scrub-wrap">
+            <input id="timelineSeek" class="timeline-seek" type="range" min="0" max="0" step="0.01" value="0" />
+            <div class="timeline-seek-meta"><span>Timeline seek</span><span id="timelineSeekLabel">0.0s</span></div>
+          </div>
+          <div class="preview-controls">
+            <div id="previewStatus" class="preview-status">Ready</div>
+          </div>
+        </div>
+
+
+
+
+        <div class="panel timeline-panel">
+          <div class="timeline-head">
+            <h3>Timeline</h3>
+            <div class="timeline-actions">
+              <div class="timeline-zoom-wrap">
+                <span class="muted small">Zoom</span>
+                <input id="timelineZoom" class="timeline-zoom" type="range" min="6" max="600" step="2" value="120" />
+                <span id="timelineZoomLabel" class="muted small">100%</span>
+              </div>
+              <button id="splitBtn" class="btn ghost small">Split</button>
+              <button id="copyBtn" class="btn ghost small">Copy</button>
+              <button id="pasteBtn" class="btn ghost small">Paste</button>
+              <button id="moveLeftBtn" class="btn ghost small">←</button>
+              <button id="moveRightBtn" class="btn ghost small">→</button>
+              <button id="deleteBtn" class="btn ghost small danger">Delete</button>
+            </div>
+          </div>
+          <div id="timelineMeta" class="timeline-meta">Total duration: 0.0s</div>
+          <div id="timelineDropHint" class="timeline-drop-hint hidden">Drop to reorder clip</div>
+          <div class="timeline-scroll" id="timelineScroll">
+            <div class="timeline-stage" id="timelineStage">
+              <div id="timelinePlayhead" class="timeline-playhead"></div>
+              <div id="timeRuler" class="time-ruler"></div>
+              <div class="track-label">Visual track</div>
+              <div id="visualTrack" class="track-row"></div>
+              <div class="track-label">Music tracks</div>
+              <div id="musicTrackBar" class="music-bar"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

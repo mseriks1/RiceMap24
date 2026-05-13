@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BriteSight Design Studio</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<style>
+.britesightBackBar{position:fixed;top:12px;left:12px;z-index:99999;font:600 13px/1.2 Inter,Arial,sans-serif;background:rgba(8,12,24,.82);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:9px 12px;text-decoration:none;box-shadow:0 10px 30px rgba(0,0,0,.24);backdrop-filter:blur(10px)}
+.britesightBackBar:hover{background:rgba(15,23,42,.95)}
+</style>
+<a class="britesightBackBar" href="javascript:history.length>1?history.back():location.href='/'">← Back to RiceMap24</a>
+
+  <div id="app">
+    <aside class="sidebar left">
+      <div class="brand">
+        <img class="brand-logo-full" src="BriteSight-DesignStudio.png" alt="BriteSight Design Studio logo" />
+      </div>
+
+      <section class="panel doc-panel">
+        <div class="panel-head"><h2>Document</h2></div>
+        <div class="field stack">
+          <label for="templateSelect">Choose a template</label>
+          <select id="templateSelect"></select>
+        </div>
+        <div class="button-row wrap">
+          <button id="newFromTemplateBtn" class="primary">Open template</button>
+          <button id="blankDocBtn">Blank document</button>
+        </div>
+        <div class="button-row wrap spaced-top">
+          <button id="saveProjectBtn">Save .dmaker</button>
+          <button id="loadProjectBtn">Open .dmaker</button>
+          <input id="loadProjectInput" type="file" accept=".dmaker,.json,application/json" hidden />
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Pages</h2>
+        </div>
+        <div class="button-row wrap compact-row spaced-top-sm">
+          <button id="addBlankPageBtn" class="small">Add Blank Page</button>
+          <button id="duplicatePageBtn" class="small">Duplicate Page</button>
+        </div>
+        <div class="button-row wrap compact-row spaced-top-sm">
+          <button id="deletePageBtn" class="small">Delete Page</button>
+          <button id="movePageLeftBtn" class="small">Move Left</button>
+          <button id="movePageRightBtn" class="small">Move Right</button>
+        </div>
+        <div class="field stack spaced-top-sm">
+          <label>Page orientation</label>
+          <div class="button-row wrap compact-row">
+            <button id="pagePortraitBtn" type="button">Portrait</button>
+            <button id="pageLandscapeBtn" type="button">Landscape</button>
+          </div>
+        </div>
+        <div class="field stack spaced-top-sm">
+          <label>Helper grid on document</label>
+          <div class="button-row wrap compact-row">
+            <button id="docGridOffBtn" type="button" class="active">Grid off</button>
+            <button id="docGridOnBtn" type="button">Grid on</button>
+          </div>
+          <div class="field stack spaced-top-sm grid-strength-field">
+            <label for="docGridStrengthRange">Grid strength <span id="docGridStrengthLabel" class="range-readout">25%</span></label>
+            <input id="docGridStrengthRange" type="range" min="5" max="100" step="5" value="25" />
+          </div>
+        </div>
+        <div class="field stack spaced-top-sm">
+          <label>Helper guide lines</label>
+          <div class="button-row wrap compact-row">
+            <button id="docGuidesOffBtn" type="button" class="active">Guides off</button>
+            <button id="docGuidesOnBtn" type="button">Guides on</button>
+          </div>
+          <div class="field stack spaced-top-sm grid-strength-field">
+            <label for="docGuideStrengthRange">Guide strength <span id="docGuideStrengthLabel" class="range-readout">35%</span></label>
+            <input id="docGuideStrengthRange" type="range" min="5" max="100" step="5" value="35" />
+          </div>
+          <div class="field stack spaced-top-sm guide-options-field">
+            <label>Guide types</label>
+            <div class="guide-option-list">
+              <label class="check-inline"><input id="docGuideCenterChk" type="checkbox" checked /> Center</label>
+              <label class="check-inline"><input id="docGuideThirdsChk" type="checkbox" checked /> Thirds</label>
+              <label class="check-inline"><input id="docGuideQuartersChk" type="checkbox" checked /> Quarters</label>
+            </div>
+          </div>
+        </div>
+        <div id="pagesList" class="pages-list"></div>
+      </section>
+
+      <section class="panel add-panel">
+        <div class="panel-head"><h2>Add</h2></div>
+        <div class="add-group-title">Manual</div>
+        <div class="button-row wrap grid-2 add-grid compact-add-grid">
+          <button id="addTextBtn">Text</button>
+          <button id="addImagePlaceholderBtn">Image placeholder</button>
+          <button id="addImageBtn">Upload image</button>
+          <button id="addBadgeBtn">Logo / Badge</button>
+          <button id="addDividerBtn">Divider / Line</button>
+          <button id="addCircleBtn">Circle</button>
+          <button id="addRectBtn">Rectangle</button>
+          <button id="addSquareModeBtn">Square mode</button>
+          <button id="addLineBtn">Line</button>
+          <button id="addStrokeBtn">Thin stroke</button>
+          <button id="addWaveBtn">Wave</button>
+          <button id="addTriangleBtn">Triangle</button>
+          <button id="addArcBtn">Arc</button>
+          <button id="addBlobBtn">Blob</button>
+          <button id="addDiamondBtn">Diamond</button>
+          <button id="addDiagonalSliceCollageBtn">Diagonal Slice Collage</button>
+          <button id="addDiagonalCollageBtn">Diagonal Collage</button>
+          <button id="addParallelCollageBtn">Parallel Collage</button>
+          <button id="addVerticalParallelCollageBtn">Vertical Parallel Collage</button>
+          <button id="addCirclesCollageBtn">Circles Collage</button>
+          <button id="addPillBtn">Pill</button>
+          <button id="addArchBtn">Arch</button>
+          <button id="addSpeechBtn">Speech</button>
+          <button id="addStarburstBtn">Starburst</button>
+          <button id="addHeartBtn">Heart</button>
+          <button id="addPenLineBtn">Draw pen line</button>
+          <button id="addFreeformBtn">Draw freeform</button>
+          <button id="addIconBtn">Icon</button>
+        </div>
+        <div class="icon-picker-inline panel-inline" id="iconPickerInline">
+          <label for="iconPresetSelect" class="tool-strip-label">Icon style</label>
+          <select id="iconPresetSelect">
+            <option value="star">★ Star</option>
+            <option value="heart">♥ Heart</option>
+            <option value="phone">☎ Phone</option>
+            <option value="mail">✉ Mail</option>
+            <option value="location">⌖ Location</option>
+            <option value="clock">◷ Clock</option>
+            <option value="check">✓ Check</option>
+            <option value="globe">🌐 Globe</option>
+            <option value="camera">📷 Camera</option>
+            <option value="cart">🛒 Cart</option>
+          </select>
+        </div>
+        <div class="draw-binary-controls panel-inline" id="drawBinaryControls">
+          <span class="tool-strip-label">Draw smoothing</span>
+          <div class="draw-binary-buttons">
+            <button id="drawBinaryOffBtn" class="tool-btn small active" type="button">Off</button>
+            <button id="drawBinaryOnBtn" class="tool-btn small" type="button">Full on</button>
+          </div>
+        </div>
+        <div class="add-group-title spaced-top">Ready-made blocks</div>
+        <div class="button-row wrap grid-2 add-grid compact-add-grid">
+          <button id="addQrBtn">QR block</button>
+          <button id="addPriceTagBtn">Price / Offer tag</button>
+          <button id="addContactBtn">Contact block</button>
+          <button id="addHeadlineBtn">Headline block</button>
+          <button id="addQuoteBtn">Quote / Testimonial</button>
+          <button id="addCtaBtn">CTA block</button>
+          <button id="addFeatureCardBtn">Feature card</button>
+          <button id="addTeamCardBtn">Team/person card</button>
+          <button id="addBeforeAfterBtn">Before/after block</button>
+          <button id="addMapCardBtn">Map/location card</button>
+          <button id="addOpeningHoursBtn">Opening hours block</button>
+          <button id="addFaqSectionBtn">FAQ section</button>
+          <button id="addStatsBlockBtn">Stats / Numbers block</button>
+          <button id="addServicesListBtn">Services list</button>
+          <button id="addStepsBlockBtn">Steps / Process block</button>
+          <button id="addSocialLinksBtn">Social links block</button>
+          <button id="addGalleryStripBtn">Gallery strip</button>
+          <button id="addTestimonialRowBtn">Testimonial row</button>
+          <button id="addLogoStripBtn">Logo strip</button>
+          <button id="addNewsletterBlockBtn">Newsletter / Signup</button>
+          <button id="addCouponBlockBtn">Coupon / Voucher</button>
+          <button id="addEventBlockBtn">Event block</button>
+          <button id="addBookingBlockBtn">Booking block</button>
+          <button id="addFormBlockBtn">Form block</button>
+          <button id="addGuaranteeBlockBtn">Guarantee / Trust</button>
+          <button id="addTimelineBlockBtn">Timeline block</button>
+        </div>
+        <div class="add-group-title spaced-top">Menu / ordering blocks</div>
+        <div class="button-row wrap grid-2 add-grid compact-add-grid">
+          <button id="addMenuSectionHeaderBtn">Menu section header</button>
+          <button id="addMenuDishRowBtn">Dish row + description</button>
+          <button id="addMenuFeaturedDishBtn">Highlighted dish</button>
+          <button id="addMenuComboDealBtn">Combo / deal block</button>
+          <button id="addMenuAllergensBtn">Allergen icons row</button>
+          <button id="addMenuQrOrderBtn">QR menu block</button>
+          <button id="addMenuSpicyLevelBtn">Spicy level block</button>
+          <button id="addMenuAddonsBtn">Add-ons block</button>
+          <button id="addMenuDrinksListBtn">Drinks list block</button>
+          <button id="addMenuDessertBlockBtn">Dessert block</button>
+          <button id="addMenuCategoryGridBtn">Category grid</button>
+          <button id="addMenuItemCardBtn">Menu item card</button>
+          <button id="addMenuDaypartsBtn">Breakfast / lunch / dinner</button>
+          <button id="addWineCocktailListBtn">Wine / cocktail list</button>
+          <button id="addSeasonalSpecialsBtn">Seasonal specials block</button>
+          <button id="addBuffetCateringMenuBtn">Buffet / catering menu</button>
+          <button id="addMenuHighlightsBtn">Menu highlights</button>
+          <button id="addMenuPhotoStripBtn">Dish photo strip</button>
+          <button id="addMenuDeliveryInfoBtn">Delivery info block</button>
+          <button id="addMenuFooterBtn">Menu footer block</button>
+          <button id="addMenuSmallPrintBtn">Small print block</button>
+          <button id="addMenuOrderContactBtn">Menu contact / order block</button>
+          <button id="addPickupDeliveryBtn">Pickup / delivery block</button>
+          <button id="addOrderStepsBtn">Order steps block</button>
+          <button id="addMinimumDeliveryBtn">Minimum order / delivery area</button>
+          <button id="addScanToOrderCtaBtn">Scan to order CTA</button>
+          <button id="addAppOrderStripBtn">App / website ordering strip</button>
+          <button id="addTwoColumnMenuSectionBtn">Two-column menu section</button>
+          <button id="addThankYouMiniMenuBtn">Thank-you + mini menu</button>
+        </div>
+        <div class="add-group-title spaced-top">Templates / layouts</div>
+        <div class="button-row wrap grid-2 add-grid compact-add-grid">
+          <button id="addClassicMenuTemplateBtn">Classic restaurant menu</button>
+          <button id="addTakeawayMenuTemplateBtn">Takeaway menu</button>
+          <button id="addDrinksMenuTemplateBtn">Drinks menu template</button>
+          <button id="addKidsMenuTemplateBtn">Kids menu template</button>
+          <button id="addAsianTakeawayMenuTemplateBtn">Asian takeaway menu</button>
+          <button id="addTableTentMenuTemplateBtn">Table tent menu</button>
+          <button id="addPromoMenuTemplateBtn">Promo menu template</button>
+          <button id="addFoldedMenuLayoutBtn">Folded menu layout</button>
+        </div>
+        <input id="addImageInput" type="file" accept="image/*" hidden />
+      </section>
+
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div class="button-row wrap">
+          <button id="undoBtn">Undo</button>
+          <button id="redoBtn">Redo</button>
+          <button id="deleteSelectedBtn">Delete</button>
+          <button id="duplicateSelectedBtn">Duplicate</button>
+          <button id="copySelectedBtn">Copy</button>
+          <button id="pasteSelectedBtn">Paste</button>
+          <button id="cutSelectedBtn">Cut</button>
+          <button id="bringForwardBtn">Bring forward</button>
+          <button id="sendBackwardBtn">Send backward</button>
+          <button id="bringToFrontBtn">To front</button>
+          <button id="sendToBackBtn">To back</button>
+        </div>
+        <div class="button-row wrap export-row">
+          <label class="mini-field" for="exportFormatSelect">
+            <span>Image format</span>
+            <select id="exportFormatSelect">
+              <option value="png">PNG</option>
+              <option value="jpg">JPG</option>
+            </select>
+          </label>
+          <label class="mini-field" for="exportScopeSelect">
+            <span>Pages</span>
+            <select id="exportScopeSelect">
+              <option value="current">Current page</option>
+              <option value="all">All pages</option>
+            </select>
+          </label>
+          <button id="exportImagesBtn" class="primary">Export Images</button>
+          <button id="printBtn">Print / PDF</button>
+        </div>
+      </header>
+
+      <div class="workspace-meta">
+        <div>
+          <strong id="docTitle">Untitled document</strong>
+          <span id="docMeta"></span>
+        </div>
+        <div class="zoom-wrap">
+          <label for="zoomRange">Zoom</label>
+          <input id="zoomRange" type="range" min="35" max="150" value="72" />
+          <span id="zoomLabel">72%</span>
+        </div>
+      </div>
+      <div class="tool-strip">
+        <div class="tool-strip-group">
+          <span class="tool-strip-label">Tools</span>
+          <button id="toolSelectBtn" class="tool-btn active" type="button">Select</button>
+          <button id="toolSliceBtn" class="tool-btn" type="button">Slicer</button>
+          <button id="toolGlueBtn" class="tool-btn" type="button">Glue</button>
+                  </div>
+        <div class="tool-strip-note" id="toolHint">Select: move, resize and rotate objects directly on the canvas.</div>
+        <div class="tool-strip-angle" id="sliceControls" hidden>
+          <span class="tool-strip-label">Angle</span>
+          <input id="sliceAngleRange" type="range" min="0" max="180" step="1" value="0" />
+          <span id="sliceAngleLabel">0°</span>
+          <button id="sliceAngle0Btn" class="tool-btn small" type="button">0°</button>
+          <button id="sliceAngle45Btn" class="tool-btn small" type="button">45°</button>
+          <button id="sliceAngle90Btn" class="tool-btn small" type="button">90°</button>
+          <span class="tool-strip-label">Cut edge</span>
+          <button id="sliceStrokeNoneBtn" class="tool-btn small active" type="button">No stroke</button>
+          <button id="sliceStrokeFullBtn" class="tool-btn small" type="button">Full stroke</button>
+        </div>
+      </div>
+
+
+      <div class="canvas-shell">
+        <div id="canvasViewport" class="canvas-viewport">
+          <div id="pageCanvas" class="page-canvas"></div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="sidebar right">
+      <section class="panel">
+        <div class="panel-head"><h2>Page</h2></div>
+        <div class="field stack">
+          <label for="pageBgColor">Background color</label>
+          <input id="pageBgColor" type="color" value="#ffffff" />
+        </div>
+      </section>
+
+      <section class="panel" id="selectionPanel">
+        <div class="panel-head"><h2>Selected object</h2></div>
+        <div id="noSelectionState" class="muted">Click an object on the page to edit it. Drag it directly on the canvas. Use the corner handles to resize.</div>
+        <div id="selectionControls" hidden>
+          <div class="field stack">
+            <label for="elementTypeLabel">Type</label>
+            <input id="elementTypeLabel" type="text" disabled />
+          </div>
+
+          <div class="two-col">
+            <div class="field stack">
+              <label for="xRange">X</label>
+              <input id="xRange" type="range" min="0" max="1000" value="0" />
+            </div>
+            <div class="field stack">
+              <label for="yRange">Y</label>
+              <input id="yRange" type="range" min="0" max="1000" value="0" />
+            </div>
+          </div>
+          <div class="two-col">
+            <div class="field stack">
+              <label for="widthRange">Width</label>
+              <input id="widthRange" type="range" min="10" max="1000" value="200" />
+            </div>
+            <div class="field stack">
+              <label for="heightRange">Height</label>
+              <input id="heightRange" type="range" min="10" max="1000" value="120" />
+            </div>
+          </div>
+
+          <div id="textControls" hidden>
+            <div class="field stack">
+              <label for="textContent">Text</label>
+              <textarea id="textContent" rows="4"></textarea>
+            </div>
+            <div class="field stack">
+              <label for="fontFamily">Font</label>
+              <select id="fontFamily">
+                <optgroup label="Sans / Body">
+                  <option value="Inter, Arial, sans-serif">Inter</option>
+                  <option value="Arial, Helvetica, sans-serif">Arial</option>
+                  <option value="'Helvetica Neue', Helvetica, Arial, sans-serif">Helvetica Neue</option>
+                  <option value="Verdana, Geneva, sans-serif">Verdana</option>
+                  <option value="Tahoma, Geneva, sans-serif">Tahoma</option>
+                  <option value="'Trebuchet MS', Arial, sans-serif">Trebuchet MS</option>
+                  <option value="'Gill Sans', 'Gill Sans MT', Calibri, sans-serif">Gill Sans</option>
+                  <option value="'Aptos', 'Segoe UI', Arial, sans-serif">Aptos</option>
+                  <option value="'Segoe UI', Tahoma, Geneva, Verdana, sans-serif">Segoe UI</option>
+                  <option value="'Calibri', 'Segoe UI', Arial, sans-serif">Calibri</option>
+                  <option value="'Century Gothic', 'Avenir Next', Futura, sans-serif">Century Gothic</option>
+                  <option value="'Futura', 'Trebuchet MS', Arial, sans-serif">Futura</option>
+                  <option value="'Avenir Next', 'Segoe UI', Arial, sans-serif">Avenir Next</option>
+                </optgroup>
+                <optgroup label="Headline">
+                  <option value="'Arial Black', Gadget, sans-serif">Arial Black</option>
+                  <option value="Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif">Impact</option>
+                  <option value="'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif">Franklin Gothic</option>
+                  <option value="'Bebas Neue', Impact, sans-serif">Bebas Neue</option>
+                  <option value="'Montserrat', 'Arial Black', Arial, sans-serif">Montserrat</option>
+                  <option value="'Oswald', Impact, sans-serif">Oswald</option>
+                </optgroup>
+                <optgroup label="Serif">
+                  <option value="Georgia, serif">Georgia</option>
+                  <option value="'Times New Roman', Times, serif">Times New Roman</option>
+                  <option value="Garamond, Baskerville, 'Times New Roman', serif">Garamond</option>
+                  <option value="Palatino, 'Palatino Linotype', 'Book Antiqua', serif">Palatino</option>
+                  <option value="Cambria, Georgia, serif">Cambria</option>
+                  <option value="Baskerville, Georgia, serif">Baskerville</option>
+                  <option value="Didot, 'Times New Roman', serif">Didot</option>
+                </optgroup>
+                <optgroup label="Signature / Decorative">
+                  <option value="'Brush Script MT', 'Segoe Script', cursive">Brush Script</option>
+                  <option value="'Lucida Handwriting', cursive">Lucida Handwriting</option>
+                  <option value="'Segoe Script', cursive">Segoe Script</option>
+                  <option value="'Comic Sans MS', cursive, sans-serif">Comic Sans</option>
+                  <option value="Papyrus, fantasy">Papyrus</option>
+                  <option value="Copperplate, 'Copperplate Gothic Light', fantasy">Copperplate</option>
+                </optgroup>
+              </select>
+            </div>
+            <div class="two-col compact-text-ranges">
+              <div class="field stack">
+                <label for="lineHeightRange">Line spacing</label>
+                <input id="lineHeightRange" type="range" min="0.8" max="2.4" step="0.02" value="1.2" />
+              </div>
+              <div class="field stack">
+                <label for="letterSpacingRange">Letter spacing</label>
+                <input id="letterSpacingRange" type="range" min="-2" max="20" step="0.1" value="0" />
+              </div>
+            </div>
+            <div class="field stack">
+              <label>Text style</label>
+              <div class="button-row wrap" id="textStyleRow">
+                <button id="textBoldBtn" type="button">Bold</button>
+                <button id="textItalicBtn" type="button">Italic</button>
+                <button id="textUnderlineBtn" type="button">Underline</button>
+              </div>
+            </div>
+            <div class="two-col">
+              <div class="field stack">
+                <label for="fontSizeRange">Font size</label>
+                <input id="fontSizeRange" type="range" min="10" max="120" value="24" />
+              </div>
+              <div class="field stack">
+                <label for="textColor">Text color</label>
+                <input id="textColor" type="color" value="#111111" />
+              </div>
+            </div>
+            <div class="field stack">
+              <label>Text align</label>
+              <div class="button-row wrap split-3">
+                <button data-align="left" class="alignBtn">Left</button>
+                <button data-align="center" class="alignBtn">Center</button>
+                <button data-align="right" class="alignBtn">Right</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="imageControls" hidden>
+            <div class="button-row wrap">
+              <button id="replaceImageBtn">Replace image</button>
+              <input id="replaceImageInput" type="file" accept="image/*" hidden />
+            </div>
+            <div class="two-col">
+              <div class="field stack">
+                <label for="imageZoomRange">Image zoom</label>
+                <input id="imageZoomRange" type="range" min="0.5" max="3" step="0.01" value="1" />
+              </div>
+              <div class="field stack">
+                <label for="radiusRange">Corner radius</label>
+                <input id="radiusRange" type="range" min="0" max="120" value="0" />
+              </div>
+            </div>
+            <div class="two-col">
+              <div class="field stack">
+                <label for="imageOffsetXRange">Image X</label>
+                <input id="imageOffsetXRange" type="range" min="-400" max="400" value="0" />
+              </div>
+              <div class="field stack">
+                <label for="imageOffsetYRange">Image Y</label>
+                <input id="imageOffsetYRange" type="range" min="-400" max="400" value="0" />
+              </div>
+            </div>
+            <div class="field stack">
+              <label for="imageClipShape">Clip shape</label>
+              <select id="imageClipShape">
+                <option value="rect">Rectangle</option>
+                <option value="circle">Circle</option>
+                <option value="blob">Blob</option>
+              </select>
+            </div>
+          </div>
+
+
+          <div id="effectsControls">
+            <div class="panel-subtitle">Effects</div>
+            <div class="field stack">
+              <label class="check-inline"><input id="fxShadowEnabled" type="checkbox" /> Enable shadow</label>
+            </div>
+            <div id="shadowFields">
+              <div class="two-col">
+                <div class="field stack">
+                  <label for="fxShadowColor">Shadow color</label>
+                  <input id="fxShadowColor" type="color" value="#000000" />
+                </div>
+                <div class="field stack">
+                  <label for="fxShadowOpacityRange">Shadow opacity</label>
+                  <input id="fxShadowOpacityRange" type="range" min="0" max="100" value="25" />
+                </div>
+              </div>
+              <div class="two-col">
+                <div class="field stack">
+                  <label for="fxShadowBlurRange">Shadow blur</label>
+                  <input id="fxShadowBlurRange" type="range" min="0" max="120" value="20" />
+                </div>
+                <div class="field stack">
+                  <label for="fxShadowOffsetYRange">Shadow Y</label>
+                  <input id="fxShadowOffsetYRange" type="range" min="-160" max="160" value="8" />
+                </div>
+              </div>
+              <div class="field stack">
+                <label for="fxShadowOffsetXRange">Shadow X</label>
+                <input id="fxShadowOffsetXRange" type="range" min="-160" max="160" value="0" />
+              </div>
+            </div>
+            <div class="field stack spaced-top-sm">
+              <label class="check-inline"><input id="fxReflectionEnabled" type="checkbox" /> Enable reflection</label>
+            </div>
+            <div id="reflectionFields">
+              <div class="two-col">
+                <div class="field stack">
+                  <label for="fxReflectionOpacityRange">Reflection opacity</label>
+                  <input id="fxReflectionOpacityRange" type="range" min="0" max="100" value="30" />
+                </div>
+                <div class="field stack">
+                  <label for="fxReflectionDistanceRange">Reflection distance</label>
+                  <input id="fxReflectionDistanceRange" type="range" min="0" max="240" value="8" />
+                </div>
+              </div>
+              <div class="field stack">
+                <label for="fxReflectionScaleRange">Reflection size</label>
+                <input id="fxReflectionScaleRange" type="range" min="0.1" max="1" step="0.01" value="0.55" />
+              </div>
+            </div>
+          </div>
+          <div id="shapeControls" hidden>
+            <div class="field stack">
+              <label for="shapeVariantSelect">Shape style</label>
+              <select id="shapeVariantSelect">
+                <option value="rect">Rectangle</option>
+                <option value="circle">Circle</option>
+                <option value="blob">Blob</option>
+                <option value="diamond">Diamond</option>
+                <option value="pill">Pill</option>
+                <option value="arch">Arch</option>
+                <option value="speech">Speech bubble</option>
+                <option value="starburst">Starburst</option>
+                <option value="heart">Heart</option>
+                <option value="triangle">Triangle</option>
+                <option value="line">Line</option>
+                <option value="stroke">Thin stroke</option>
+                <option value="wave">Wave</option>
+                <option value="arc">Arc</option>
+              </select>
+            </div>
+            <div class="two-col">
+              <div class="field stack" id="shapeFillModeField">
+                <label for="shapeFillMode">Fill mode</label>
+                <select id="shapeFillMode">
+                  <option value="solid">Solid</option>
+                  <option value="gradient">Gradient</option>
+                  <option value="image">Image fill</option>
+                </select>
+              </div>
+              <div class="field stack">
+                <label for="shapeOpacityRange">Opacity</label>
+                <input id="shapeOpacityRange" type="range" min="0" max="100" value="100" />
+              </div>
+            </div>
+            <div id="shapeFillFields" class="two-col">
+              <div class="field stack">
+                <label for="shapeFill">Fill</label>
+                <div class="color-row">
+                  <input id="shapeFill" type="color" value="#e8d7ff" />
+                  <button id="shapeFillNoneBtn" type="button" class="color-none-btn" aria-label="No fill" title="No fill"></button>
+                </div>
+              </div>
+              <div class="field stack">
+                <label for="shapeStroke">Stroke</label>
+                <div class="color-row">
+                  <input id="shapeStroke" type="color" value="#5b2fbf" />
+                  <button id="shapeStrokeNoneBtn" type="button" class="color-none-btn" aria-label="No stroke" title="No stroke"></button>
+                </div>
+              </div>
+            </div>
+            <div id="shapeGradientFields" class="two-col">
+              <div class="field stack">
+                <label for="shapeGradientTo">Gradient to</label>
+                <input id="shapeGradientTo" type="color" value="#ffffff" />
+              </div>
+              <div class="field stack">
+                <label for="shapeGradientDirection">Gradient direction</label>
+                <select id="shapeGradientDirection">
+                  <option value="horizontal">Horizontal</option>
+                  <option value="vertical">Vertical</option>
+                  <option value="diagonal">Diagonal</option>
+                </select>
+              </div>
+            </div>
+            <div id="shapeImageFields" class="button-row wrap">
+              <button id="shapeFillImageBtn">Upload fill image</button>
+              <input id="shapeFillImageInput" type="file" accept="image/*" hidden />
+            </div>
+            <div class="two-col">
+              <div class="field stack">
+                <label>Mirror</label>
+                <div class="button-row wrap">
+                  <button id="shapeFlipHBtn" type="button">Mirror H</button>
+                  <button id="shapeFlipVBtn" type="button">Mirror V</button>
+                </div>
+              </div>
+              <div class="field stack">
+                <label for="shapeRotationRange">Rotate</label>
+                <input id="shapeRotationRange" type="range" min="-180" max="180" step="1" value="0" />
+                <div class="button-row rotate-presets">
+                  <button id="rotate0Btn" class="small" type="button">0°</button>
+                  <button id="rotate90Btn" class="small" type="button">90°</button>
+                  <button id="rotate180Btn" class="small" type="button">180°</button>
+                  <button id="rotate270Btn" class="small" type="button">270°</button>
+                </div>
+              </div>
+            </div>
+            <div id="shapeLineFields" class="two-col">
+              <div class="field stack">
+                <label for="shapeLineStyle">Line style</label>
+                <select id="shapeLineStyle">
+                  <option value="solid">Solid</option>
+                  <option value="dashed">Dashed</option>
+                  <option value="dotted">Dotted</option>
+                </select>
+              </div>
+              <div class="field stack">
+                <label for="shapeLineCap">Line ends</label>
+                <select id="shapeLineCap">
+                  <option value="round">Round</option>
+                  <option value="butt">Straight</option>
+                  <option value="square">Square</option>
+                </select>
+              </div>
+            </div>
+            <div class="two-col">
+              <div class="field stack">
+                <label for="strokeWidthRange">Stroke width</label>
+                <input id="strokeWidthRange" type="range" min="0.5" max="24" step="0.5" value="0" />
+              </div>
+              <div class="field stack" id="shapeRadiusField">
+                <label for="shapeRadiusRange">Corner radius</label>
+                <input id="shapeRadiusRange" type="range" min="0" max="200" value="0" />
+              </div>
+            </div>
+            <div class="field stack" id="shapeAspectField">
+              <label>Aspect</label>
+              <div class="button-row wrap">
+                <button id="shapeSquareModeBtn" type="button">Square mode</button>
+              </div>
+            </div>
+            <div id="verticalParallelControls" class="field stack" hidden>
+              <label for="verticalParallelLinesRange">Vertical lines</label>
+              <input id="verticalParallelLinesRange" type="range" min="1" max="12" step="1" value="7" />
+              <div class="button-row wrap">
+                <span id="verticalParallelLinesLabel" class="pill-chip">7 lines</span>
+              </div>
+              </div>
+            </div>
+            <div id="shapeDrawFields" class="field stack" hidden>
+              <label>Draw smoothing</label>
+              <div class="button-row" id="shapeSmoothToggleRow">
+                <button id="shapeSmoothOffBtn" type="button" class="small primary">Off</button>
+                <button id="shapeSmoothOnBtn" type="button" class="small">Full on</button>
+              </div>
+            </div>
+          </div>
+  
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Layers</h2></div>
+        <div id="layersList" class="layers-list"></div>
+      </section>      </section>
+    </aside>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

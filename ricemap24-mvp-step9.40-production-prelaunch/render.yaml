@@ -1,0 +1,70 @@
+services:
+  - type: web
+    name: ricemap24-web
+    env: docker
+    plan: starter
+    autoDeploy: false
+    healthCheckPath: /health
+    disk:
+      name: ricemap24-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: RICEMAP_ENV
+        value: staging
+      - key: RICEMAP_DEPLOYMENT_PROVIDER
+        value: render
+      - key: RICEMAP_DEPLOYMENT_REGION
+        value: frankfurt
+      - key: RICEMAP_RELEASE_VERSION
+        value: step9.40-production-prelaunch
+      - key: RICEMAP_PUBLIC_BASE_URL
+        sync: false
+      - key: RICEMAP_SESSION_SECRET
+        sync: false
+      - key: RICEMAP_ENABLE_LEGACY_ADMIN_KEY
+        value: false
+      - key: ENABLE_DEMO_SEED
+        value: false
+      - key: RICEMAP_DATA_DIR
+        value: /var/data
+      - key: DATABASE_URL
+        value: sqlite:////var/data/ricemap24.sqlite3
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: RICEMAP_UPLOADS_DIR
+        value: /var/data/uploads
+      - key: RICEMAP_STRIPE_MODE
+        value: test
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_BASIC_MONTHLY_NOK
+        sync: false
+      - key: STRIPE_PRICE_BUSINESS_MONTHLY_NOK
+        sync: false
+      - key: STRIPE_PRICE_GROWTH_MONTHLY_NOK
+        sync: false
+      - key: STRIPE_PRICE_PRO_MONTHLY_NOK
+        sync: false
+      - key: RICEMAP_BACKUP_DIR
+        value: /var/data/backups
+      - key: RICEMAP_BACKUP_CONFIGURED
+        value: false
+      - key: RICEMAP_ERROR_MONITORING_CONFIGURED
+        value: false
+      - key: RICEMAP_ERROR_LOG_CONFIGURED
+        value: true
+      - key: RICEMAP24_EMAIL_PROVIDER
+        value: manual
+      - key: RICEMAP24_EMAIL_DELIVERY_ENABLED
+        value: false
+      - key: RICEMAP24_EMAIL_FROM
+        value: no-reply@ricemap24.com
+      - key: RICEMAP24_EMAIL_REPLY_TO
+        value: no-reply@ricemap24.com
+      - key: RICEMAP24_ADMIN_NOTIFICATION_EMAIL
+        sync: false
+      - key: RICEMAP24_POSTMARK_SERVER_TOKEN
+        sync: false

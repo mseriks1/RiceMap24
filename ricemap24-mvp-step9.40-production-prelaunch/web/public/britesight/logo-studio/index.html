@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BriteSight Logo Studio</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<style>
+.britesightBackBar{position:fixed;top:12px;left:12px;z-index:99999;font:600 13px/1.2 Inter,Arial,sans-serif;background:rgba(8,12,24,.82);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:9px 12px;text-decoration:none;box-shadow:0 10px 30px rgba(0,0,0,.24);backdrop-filter:blur(10px)}
+.britesightBackBar:hover{background:rgba(15,23,42,.95)}
+</style>
+<a class="britesightBackBar" href="javascript:history.length>1?history.back():location.href='/'">← Back to RiceMap24</a>
+
+<div class="app">
+  <div class="hero">
+  <div class="mode-row">
+    <button class="pill active" data-mode="generic">Generic</button>
+    <button class="pill" data-mode="restaurant">Restaurant</button>
+    <button class="pill" data-mode="ricemap24">Home Kitchen</button>
+  </div>
+  <div class="hero-brand-text">
+    <span class="hero-brand-main"><span class="hero-brand-brite">Brite</span><span class="hero-brand-sight">Sight</span> Logo Studio</span>
+    <span class="hero-brand-sub">Food Business Edition</span>
+  </div>
+</div>
+  <div class="layout">
+    <div class="panel left-panel"><div class="panel-header"><h2>Editor</h2><div class="sub">Name, colors, templates, and many symbols.</div></div><div class="panel-body"><img class="sidebar-brand-logo" src="BriteSight-LogoStudio.png" alt="BriteSight Logo Studio logo" />
+      <div class="tabs" style="margin-bottom:16px;"><button class="tab-btn active" data-tab="brand">Brand</button><button class="tab-btn" data-tab="style">Style</button><button class="tab-btn" data-tab="templates">Templates</button><button class="tab-btn" data-tab="symbols">Symbols</button></div>
+      <div class="tab-panel" data-panel="brand"><div class="section"><div class="section-title">Brand</div><div style="margin-bottom:12px;"><label for="brand">Brand name</label><input id="brand" type="text" value="Nordic Studio" /></div><div style="margin-bottom:12px;"><label for="tagline">Tagline</label><input id="tagline" type="text" value="Simple sound and design" /></div><div style="margin-bottom:12px;"><label for="badgeText">Badge / label text</label><input id="badgeText" type="text" value="HOME KITCHEN BRAND" /></div><div class="grid2"><div><label for="brandSize">Brand size</label><input id="brandSize" type="range" min="26" max="78" value="44" /></div><div><label for="tagSize">Tagline size</label><input id="tagSize" type="range" min="10" max="28" value="14" /></div></div><div class="grid2" style="margin-top:12px;"><div><label for="brandWrap">Brand text width</label><input id="brandWrap" type="range" min="140" max="760" value="320" /></div><div><label for="tagWrap">Tagline width</label><input id="tagWrap" type="range" min="140" max="760" value="360" /></div></div><div style="margin-top:12px;"><label for="badgeWrap">Badge width</label><input id="badgeWrap" type="range" min="100" max="420" value="220" /></div><div style="margin-top:12px;"><label for="spacing">Letter spacing</label><input id="spacing" type="range" min="0" max="14" value="2" /></div></div></div>
+      <div class="tab-panel hidden" data-panel="style"><div class="section"><div class="section-title">Style</div><div class="grid2" style="margin-bottom:12px;"><div><label for="font">Font</label><select id="font"><option value="Inter, sans-serif">Inter</option><option value="Trebuchet MS, sans-serif">Trebuchet</option><option value="Georgia, serif">Georgia</option><option value="Verdana, sans-serif">Verdana</option><option value="Arial Black, sans-serif">Arial Black</option><option value="Times New Roman, serif">Times</option><option value="Courier New, monospace">Courier</option></select></div><div><label for="layoutSelect">Layout</label><select id="layoutSelect"><option value="icon-left">Icon left</option><option value="icon-top">Icon top</option><option value="stacked">Stacked</option></select></div></div><div class="grid2" style="margin-bottom:12px;"><div><label for="canvasBg">Preview background</label><input id="canvasBg" type="color" value="#ffffff" /></div><div><label for="panelBg">Panel inner fill</label><input id="panelBg" type="color" value="#ffffff" /></div></div><div class="grid2" style="margin-bottom:12px;"><div><label for="frameColor">Frame / border</label><input id="frameColor" type="color" value="#7c3aed" /></div><div><label for="bg">Inverse text / on-accent</label><input id="bg" type="color" value="#ffffff" /></div></div><div class="grid2" style="margin-bottom:12px;"><div><label for="fg">Main text</label><input id="fg" type="color" value="#0f172a" /></div><div><label for="tagColor">Tagline</label><input id="tagColor" type="color" value="#0f172a" /></div></div><div class="grid2" style="margin-bottom:12px;"><div><label for="accent">Accent / icon</label><input id="accent" type="color" value="#7c3aed" /></div><div></div></div><div class="grid2"><div class="toggle"><span>Show tagline</span><input id="showTagline" type="checkbox" checked /></div><div class="toggle"><span>All caps</span><input id="caps" type="checkbox" /></div></div><div style="margin-top:12px;" class="toggle"><span>Outline icon style</span><input id="outlineIcon" type="checkbox" /></div></div></div>
+      <div class="tab-panel hidden" data-panel="templates"><div class="section"><div class="section-title">Templates</div><div class="template-grid" id="templateGrid"></div></div></div>
+      <div class="tab-panel hidden" data-panel="symbols"><div class="section"><div class="section-title">Symbols</div><div class="search"><input id="symbolSearch" type="text" placeholder="Search symbols, e.g. pizza, wok, leaf, cup..." /></div><div class="grid2" style="margin-bottom:12px;"><div><label for="shapeCategory">Category</label><select id="shapeCategory"><option value="all">All</option><option value="restaurant">Restaurant / Takeaway</option><option value="general">General</option><option value="letters">Letter symbols</option></select></div><div><label for="iconScale">Icon scale</label><input id="iconScale" type="range" min="60" max="150" value="100" /></div></div><div class="grid2" style="margin-bottom:12px;"><div><label for="iconGap">Icon gap to text</label><input id="iconGap" type="range" min="0" max="120" value="28" /></div><div><label for="iconOffsetX">Icon offset X</label><input id="iconOffsetX" type="range" min="-140" max="140" value="0" /></div></div><div style="margin-bottom:12px;"><label for="iconOffsetY">Icon offset Y</label><input id="iconOffsetY" type="range" min="-140" max="140" value="0" /></div>
+<div class="uploader" style="margin-bottom:12px;">
+  <label for="iconUpload">Upload custom icon (PNG/SVG)</label>
+  <div class="uploader-row">
+    <input id="iconUpload" type="file" accept="image/png,image/svg+xml" />
+    <button type="button" class="file-btn" id="iconUploadBtn">Choose file</button>
+    <span class="file-name" id="iconUploadName">No file selected</span>
+  </div>
+  <div class="muted" style="margin-top:8px;">Uploaded icon replaces the default symbol.</div>
+</div>
+<div class="symbol-grid" id="symbolGrid"></div></div></div>
+      <div class="section" style="margin-top:36px;"><div class="section-title">Actions</div><div class="muted" style="margin-bottom:10px;">Two export options: PNG with panel/frame, or transparent PNG without panel and fill.</div><div class="btn-row" style="flex-wrap:wrap;"><button class="btn soft" id="saveProjectBtn">Save project (.lmaker)</button><button class="btn soft" id="openProjectBtn">Open project (.lmaker)</button><input id="openProjectFile" type="file" accept=".lmaker,application/json" style="display:none;" /><button class="btn" id="exportPanelPng">Export PNG with panel</button><button class="btn" id="exportTransparentPng">Export transparent PNG</button><button class="btn soft" id="resetBtn">Reset</button></div></div>
+    </div></div>
+    <div class="panel"><div class="panel-header"><h2>Main preview</h2><div class="sub">Large live preview of the selected logo.</div></div><div class="preview-wrap"><div class="preview-toolbar"><div class="preview-badges"><span class="badge" id="activeTemplateBadge">Clean Wordmark</span><span class="badge" id="activeModeBadge">Generic mode</span><span class="badge" id="activeShapeBadge">circle</span></div><div class="btn-row"><button class="btn" id="applyVariantToMain">Use selected variant</button></div></div><div class="preview-stage" id="mainPreview"></div><div class="footer-note">The right side shows ready-made variants. Select one to use it as the main direction.</div></div></div>
+    <div class="panel variants-panel"><div class="panel-header"><h2>Auto variants</h2><div class="sub">Automatic suggestions based on name, template, and symbol.</div></div><div class="panel-body"><div class="variant-list" id="variantList"></div></div></div>
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+BriteSight Video Editor step31.7 — Safari preview + gapless handoff fix
+
+Changes:
+- More robust Safari preview initialization for imported videos.
+- Adds poster/thumbnail fallback for video preview before Safari has painted the first decoded frame.
+- Forces a preview re-render after window load to avoid an empty initial preview frame.
+- Adds CSS aspect-ratio fallback for Safari/WebKit edge cases.
+- Starts preloading/prestarting the next video earlier before clip end.
+- Keeps the outgoing video frame alive briefly during handoff if the next clip is not already prestarted, reducing black/frozen gaps between clips in Safari.
+- Keeps the previous dual-video handoff logic, but avoids pausing the old video too early on Safari.
+
+Test focus:
+1. Open in Safari.
+2. Import 2–4 MP4/MOV H.264 clips.
+3. Confirm the preview frame is visible from app start and after import.
+4. Play full timeline and check whether the pauses between clips are reduced or gone.
+5. Compare with Chrome if a specific source file still has codec-related Safari limitations.

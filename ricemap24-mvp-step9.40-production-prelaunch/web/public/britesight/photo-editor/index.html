@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BriteSight Photo Editor</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<style>
+.britesightBackBar{position:fixed;top:12px;left:12px;z-index:99999;font:600 13px/1.2 Inter,Arial,sans-serif;background:rgba(8,12,24,.82);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:9px 12px;text-decoration:none;box-shadow:0 10px 30px rgba(0,0,0,.24);backdrop-filter:blur(10px)}
+.britesightBackBar:hover{background:rgba(15,23,42,.95)}
+</style>
+<a class="britesightBackBar" href="javascript:history.length>1?history.back():location.href='/'">← Back to RiceMap24</a>
+
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand-card">
+        <img class="brand-logo" src="./britesight-photo-editor-brand.png" alt="BriteSight Photo Editor" />
+        <div class="brand-copy">
+          <div class="brand-kicker">BriteSight</div>
+          <h1>Photo Editor</h1>
+          <div class="brand-sub">Precision editing with a deeper visual identity</div>
+        </div>
+      </div>
+
+      <button id="importBtn" class="btn primary">Import image</button>
+      <input id="fileInput" type="file" accept="image/*" hidden />
+
+      <div class="group">
+        <div class="label">Project</div>
+        <button id="saveProjectBtn" class="btn">Save project</button>
+        <button id="openProjectBtn" class="btn">Open project</button>
+        <input id="projectFileInput" type="file" accept=".pedit,.json,application/json" hidden />
+      </div>
+
+      <div class="group">
+        <div class="label">Preset files</div>
+        <button id="savePresetBtn" class="btn">Save preset</button>
+        <button id="openPresetBtn" class="btn">Open preset</button>
+        <input id="presetFileInput" type="file" accept=".ppreset,.json,application/json" hidden />
+      </div>
+
+      <div class="group">
+        <div class="label">Geometry</div>
+        <div class="row">
+          <button id="rotateLeftBtn" class="btn">Rotate left</button>
+          <button id="rotateRightBtn" class="btn">Rotate right</button>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <button id="flipHorizontalBtn" class="btn">Flip H</button>
+          <button id="flipVerticalBtn" class="btn">Flip V</button>
+        </div>
+        <div class="card" style="margin-top:8px;">
+          <label for="straightenRange" class="row">
+            <span>Straighten</span>
+            <strong id="straightenValue">0.0°</strong>
+          </label>
+          <input id="straightenRange" type="range" min="-15" max="15" step="0.1" value="0" />
+          <button id="resetGeometryBtn" class="btn" style="margin-top:8px;">Reset geometry</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="label">Crop</div>
+        <button id="cropModeBtn" class="btn">Crop mode</button>
+        <div class="card" style="margin-top:8px;">
+          <label for="cropAspectSelect" class="row">
+            <span>Aspect</span>
+            <strong id="cropAspectValue">Free</strong>
+          </label>
+          <select id="cropAspectSelect" class="input-select">
+            <option value="free">Free</option>
+            <option value="1:1">1:1 Square</option>
+            <option value="4:5">4:5 Portrait</option>
+            <option value="5:4">5:4 Landscape</option>
+            <option value="3:2">3:2</option>
+            <option value="2:3">2:3</option>
+            <option value="16:9">16:9</option>
+            <option value="9:16">9:16</option>
+          </select>
+          <button id="applyCropBtn" class="btn" style="margin-top:8px;">Apply crop</button>
+          <button id="cancelCropBtn" class="btn">Cancel crop</button>
+          <button id="resetCropBtn" class="btn">Reset crop</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="label">Adjust</div>
+        <div class="card">
+          <label for="exposureRange" class="row">
+            <span>Exposure</span>
+            <strong id="exposureValue">0.00</strong>
+          </label>
+          <input id="exposureRange" type="range" min="-2" max="2" step="0.05" value="0" />
+
+          <label for="contrastRange" class="row" style="margin-top:8px;">
+            <span>Contrast</span>
+            <strong id="contrastValue">0.00</strong>
+          </label>
+          <input id="contrastRange" type="range" min="-1" max="1" step="0.05" value="0" />
+
+          <label for="saturationRange" class="row" style="margin-top:8px;">
+            <span>Saturation</span>
+            <strong id="saturationValue">0.00</strong>
+          </label>
+          <input id="saturationRange" type="range" min="-1" max="1" step="0.05" value="0" />
+
+          <label for="vibranceRange" class="row" style="margin-top:8px;">
+            <span>Vibrance</span>
+            <strong id="vibranceValue">0.00</strong>
+          </label>
+          <input id="vibranceRange" type="range" min="-1" max="1" step="0.05" value="0" />
+
+          <label for="highlightsRange" class="row" style="margin-top:8px;">
+            <span>Highlights</span>
+            <strong id="highlightsValue">0.00</strong>
+          </label>
+          <input id="highlightsRange" type="range" min="-1" max="1" step="0.05" value="0" />
+
+          <label for="whitesRange" class="row" style="margin-top:8px;">
+            <span>Whites</span>
+            <strong id="whitesValue">0.00</strong>
+          </label>
+          <input id="whitesRange" type="range" min="-1" max="1" step="0.05" value="0" />
+
+          <label for="shadowsRange" class="row" style="margin-top:8px;">
+            <span>Shadows</span>
+            <strong id="shadowsValue">0.00</strong>
+          </label>
+          <input id="shadowsRange" type="range" min="-1" max="1" step="0.05" value="0" />
+
+          <label for="blacksRange" class="row" style="margin-top:8px;">
+            <span>Blacks</span>
+            <strong id="blacksValue">0.00</strong>
+          </label>
+          <input id="blacksRange" type="range" min="-1" max="1" step="0.05" value="0" />
+
+          <label for="temperatureRange" class="row" style="margin-top:8px;">
+            <span>Temperature</span>
+            <strong id="temperatureValue">0.00</strong>
+          </label>
+          <input id="temperatureRange" type="range" min="-1" max="1" step="0.05" value="0" />
+
+          <label for="tintRange" class="row" style="margin-top:8px;">
+            <span>Tint</span>
+            <strong id="tintValue">0.00</strong>
+          </label>
+          <input id="tintRange" type="range" min="-1" max="1" step="0.05" value="0" />
+
+          <label for="hueRange" class="row" style="margin-top:8px;">
+            <span>Hue</span>
+            <strong id="hueValue">0</strong>
+          </label>
+          <input id="hueRange" type="range" min="-180" max="180" step="1" value="0" />
+
+          <label for="sepiaRange" class="row" style="margin-top:8px;">
+            <span>Sepia</span>
+            <strong id="sepiaValue">0.00</strong>
+          </label>
+          <input id="sepiaRange" type="range" min="0" max="1" step="0.05" value="0" />
+
+          <label for="blurRange" class="row" style="margin-top:8px;">
+            <span>Blur</span>
+            <strong id="blurValue">0.00</strong>
+          </label>
+          <input id="blurRange" type="range" min="0" max="4.5" step="0.05" value="0" />
+
+          <label for="sharpenRange" class="row" style="margin-top:8px;">
+            <span>Sharpen</span>
+            <strong id="sharpenValue">0.00</strong>
+          </label>
+          <input id="sharpenRange" type="range" min="0" max="2" step="0.05" value="0" />
+
+          <label for="vignetteRange" class="row" style="margin-top:8px;">
+            <span>Vignette</span>
+            <strong id="vignetteValue">0.00</strong>
+          </label>
+          <input id="vignetteRange" type="range" min="0" max="2.5" step="0.05" value="0" />
+
+          <button id="resetAdjustmentsBtn" class="btn" style="margin-top:8px;">Reset adjustments</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="label">Adjust presets</div>
+        <div class="card">
+          <label for="adjustPresetSelect" class="row">
+            <span>Preset</span>
+            <strong id="adjustPresetValue">None</strong>
+          </label>
+          <select id="adjustPresetSelect" class="input-select">
+                        <option value="none">None</option>
+            <option value="cleanBright">Clean Bright</option>
+            <option value="warmPortrait">Warm Portrait</option>
+            <option value="softMatte">Soft Matte</option>
+            <option value="crispProduct">Crisp Product</option>
+            <option value="deepContrast">Deep Contrast</option>
+            <option value="moodyCool">Moody Cool</option>
+            <option value="goldenLift">Golden Lift</option>
+            <option value="monoPunch">Mono Punch</option>
+            <option value="dreamyGlow">Dreamy Glow</option>
+            <option value="socialPop">Social Pop</option>
+            <option value="freshAir">Fresh Air</option>
+            <option value="sunsetSkin">Sunset Skin</option>
+            <option value="pastelFade">Pastel Fade</option>
+            <option value="studioNeutral">Studio Neutral</option>
+            <option value="punchyColor">Punchy Color</option>
+            <option value="filmWash">Film Wash</option>
+            <option value="noirPortrait">Noir Portrait</option>
+            <option value="coolStreet">Cool Street</option>
+            <option value="brightMatte">Bright Matte</option>
+            <option value="richWarmth">Rich Warmth</option>
+            <option value="cleanMono">Clean Mono</option>
+            <option value="emeraldPopAdjust">Emerald Pop</option>
+            <option value="cocoaFade">Cocoa Fade</option>
+            <option value="blueMood">Blue Mood</option>
+            <option value="peachGlow">Peach Glow</option>
+          </select>
+
+          <label for="adjustPresetAmountRange" class="row" style="margin-top:8px;">
+            <span>Amount</span>
+            <strong id="adjustPresetAmountValue">1.00</strong>
+          </label>
+          <input id="adjustPresetAmountRange" type="range" min="0" max="1.5" step="0.05" value="1" />
+
+          <div class="row" style="margin-top:8px;">
+            <button id="applyAdjustPresetBtn" class="btn">Apply preset</button>
+            <button id="resetAdjustPresetBtn" class="btn">Reset choice</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="label">Mask</div>
+        <div class="row">
+          <button id="maskModeBtn" class="btn">Edit mask</button>
+          <button id="maskOverlayBtn" class="btn">Overlay on</button>
+        </div>
+        <div class="row" style="margin-top:8px; gap:8px;">
+          <select id="activeMaskSelect" style="flex:1;">
+            <option value="0">Mask 1</option>
+            <option value="1">Mask 2</option>
+            <option value="2">Mask 3</option>
+          </select>
+          <button id="addMaskBtn" class="btn">Add</button>
+          <button id="deleteMaskBtn" class="btn">Delete</button>
+        </div>
+        <div class="card">
+          <label for="maskViewSelect" class="row">
+            <span>Overlay view</span>
+            <strong id="maskViewValue">Overlay</strong>
+          </label>
+          <select id="maskViewSelect" style="margin-bottom:8px;">
+            <option value="overlay">Overlay</option>
+            <option value="bw">Black/White mask</option>
+            <option value="result">Result only</option>
+          </select>
+          <div class="row"><span>Brush</span><strong id="maskBrushSizeValue">80</strong></div>
+          <input id="maskBrushSizeRange" type="range" min="10" max="220" step="1" value="80" />
+
+          <div class="row" style="margin-top:8px;"><span>Feather</span><strong id="maskBrushFeatherValue">0.60</strong></div>
+          <input id="maskBrushFeatherRange" type="range" min="0" max="1" step="0.05" value="0.6" />
+
+          <div class="row" style="margin-top:8px;"><span>Brush mode</span><strong id="maskBrushModeValue">Paint</strong></div>
+          <div class="row">
+            <button id="maskPaintBtn" class="btn">Paint</button>
+            <button id="maskEraseBtn" class="btn">Erase</button>
+          </div>
+
+          <button id="invertMaskBtn" class="btn">Invert mask</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="label">Local mask adjust</div>
+        <div class="card">
+          <label for="maskExposureRange" class="row">
+            <span>Mask exposure</span>
+            <strong id="maskExposureValue">0.00</strong>
+          </label>
+          <input id="maskExposureRange" type="range" min="-2" max="2" step="0.05" value="0" />
+
+          <label for="maskContrastRange" class="row" style="margin-top:8px;">
+            <span>Mask contrast</span>
+            <strong id="maskContrastValue">0.00</strong>
+          </label>
+          <input id="maskContrastRange" type="range" min="-1" max="1" step="0.05" value="0" />
+
+          <label for="maskSaturationRange" class="row" style="margin-top:8px;">
+            <span>Mask saturation</span>
+            <strong id="maskSaturationValue">0.00</strong>
+          </label>
+          <input id="maskSaturationRange" type="range" min="-1" max="1" step="0.05" value="0" />
+
+          <label for="maskTemperatureRange" class="row" style="margin-top:8px;">
+            <span>Mask temperature</span>
+            <strong id="maskTemperatureValue">0.00</strong>
+          </label>
+          <input id="maskTemperatureRange" type="range" min="-1" max="1" step="0.05" value="0" />
+
+          <label for="maskTintRange" class="row" style="margin-top:8px;">
+            <span>Mask tint</span>
+            <strong id="maskTintValue">0.00</strong>
+          </label>
+          <input id="maskTintRange" type="range" min="-1" max="1" step="0.05" value="0" />
+
+          <label for="maskHueRange" class="row" style="margin-top:8px;">
+            <span>Mask hue</span>
+            <strong id="maskHueValue">0</strong>
+          </label>
+          <input id="maskHueRange" type="range" min="-180" max="180" step="1" value="0" />
+
+          <label for="maskSepiaRange" class="row" style="margin-top:8px;">
+            <span>Mask sepia</span>
+            <strong id="maskSepiaValue">0.00</strong>
+          </label>
+          <input id="maskSepiaRange" type="range" min="0" max="1" step="0.05" value="0" />
+
+          <label for="maskBlurRange" class="row" style="margin-top:8px;">
+            <span>Mask blur</span>
+            <strong id="maskBlurValue">0.00</strong>
+          </label>
+          <input id="maskBlurRange" type="range" min="0" max="3" step="0.05" value="0" />
+
+          <label for="maskSharpenRange" class="row" style="margin-top:8px;">
+            <span>Mask sharpen</span>
+            <strong id="maskSharpenValue">0.00</strong>
+          </label>
+          <input id="maskSharpenRange" type="range" min="0" max="2" step="0.05" value="0" />
+
+                    <button id="resetMaskAdjustmentsBtn" class="btn" style="margin-top:8px;">Reset mask adjustments</button>
+        </div>
+      </div>
+
+
+      <div class="group">
+        <div class="label">Filter layer</div>
+        <div class="card">
+          <label for="filterPresetSelect" class="row">
+            <span>Filter</span>
+            <strong id="filterPresetValue">None</strong>
+          </label>
+          <select id="filterPresetSelect" class="input-select">
+            <option value="none">None</option>
+            <option value="cleanStudio">Clean Studio</option>
+            <option value="softFade">Soft Fade</option>
+            <option value="tealOrange">Teal Orange</option>
+            <option value="monoFilm">Mono Film</option>
+            <option value="goldenHour">Golden Hour</option>
+            <option value="nightBlue">Night Blue</option>
+            <option value="forestMatte">Forest Matte</option>
+            <option value="roseGlow">Rose Glow</option>
+            <option value="crispPop">Crisp Pop</option>
+            <option value="autumnCine">Autumn Cine</option>
+            <option value="silverMist">Silver Mist</option>
+            <option value="magentaDream">Magenta Dream</option>
+            <option value="arcticGlass">Arctic Glass</option>
+            <option value="desertDust">Desert Dust</option>
+            <option value="oceanMist">Ocean Mist</option>
+            <option value="emberGlow">Ember Glow</option>
+            <option value="lavenderHaze">Lavender Haze</option>
+            <option value="noirFade">Noir Fade</option>
+            <option value="porcelain">Porcelain</option>
+            <option value="punchColor">Punch Color</option>
+            <option value="sunwashed">Sunwashed</option>
+            <option value="cobaltPunch">Cobalt Punch</option>
+            <option value="berryBloom">Berry Bloom</option>
+            <option value="oliveCine">Olive Cine</option>
+            <option value="copperStreet">Copper Street</option>
+            <option value="blueSteel">Blue Steel</option>
+            <option value="peachAir">Peach Air</option>
+            <option value="plumNight">Plum Night</option>
+            <option value="emeraldPop">Emerald Pop</option>
+            <option value="sepiaPaper">Sepia Paper</option>
+            <option value="icyMono">Icy Mono</option>
+            <option value="mokaMatte">Moka Matte</option>
+            <option value="neonPulse">Neon Pulse</option>
+            <option value="stormGray">Storm Gray</option>
+            <option value="creamBloom">Cream Bloom</option>
+            <option value="duskLavender">Dusk Lavender</option>
+          </select>
+
+          <label for="filterIntensityRange" class="row" style="margin-top:8px;">
+            <span>Intensity</span>
+            <strong id="filterIntensityValue">0.65</strong>
+          </label>
+          <input id="filterIntensityRange" type="range" min="0" max="1" step="0.01" value="0.65" />
+
+          <button id="resetFilterBtn" class="btn" style="margin-top:8px;">Reset filter</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="label">Export</div>
+        <div class="card">
+          <label for="exportFormatSelect" class="row">
+            <span>Format</span>
+          </label>
+          <select id="exportFormatSelect" class="input-select">
+            <option value="image/png">PNG</option>
+            <option value="image/jpeg">JPG</option>
+          </select>
+
+          <label for="exportScaleSelect" class="row" style="margin-top:8px;">
+            <span>Scale</span>
+            <strong id="exportScaleValue">100%</strong>
+          </label>
+          <select id="exportScaleSelect" class="input-select">
+            <option value="0.25">25%</option>
+            <option value="0.5">50%</option>
+            <option value="0.75">75%</option>
+            <option value="1" selected>100%</option>
+            <option value="1.25">125%</option>
+            <option value="1.5">150%</option>
+            <option value="2">200%</option>
+            <option value="3">300%</option>
+            <option value="4">400%</option>
+          </select>
+
+          <div id="exportQualityGroup">
+            <label for="exportQualityRange" class="row" style="margin-top:8px;">
+              <span>Quality</span>
+              <strong id="exportQualityValue">0.92</strong>
+            </label>
+            <input id="exportQualityRange" type="range" min="0.5" max="1" step="0.01" value="0.92" />
+          </div>
+
+          <div class="export-meta-list" style="margin-top:10px;">
+            <div class="export-meta-item">
+              <div class="export-meta-label">Original imported file</div>
+              <div class="export-meta-value" id="exportOriginalHint">—</div>
+            </div>
+            <div class="export-meta-item">
+              <div class="export-meta-label">Final output</div>
+              <div class="export-meta-value" id="exportSizeHint">—</div>
+            </div>
+            <div class="export-meta-item">
+              <div class="export-meta-label">Estimated file size</div>
+              <div class="export-meta-value" id="exportFileSizeHint">—</div>
+            </div>
+          </div>
+
+          <label for="exportFilenameInput" class="row" style="margin-top:8px;">
+            <span>Filename</span>
+            <strong id="exportExtensionHint">.png</strong>
+          </label>
+          <input id="exportFilenameInput" class="input-select" type="text" value="photo-edited" spellcheck="false" autocomplete="off" placeholder="Type any filename info here" />
+
+          <div class="row" style="margin-top:8px;">
+            <button id="exportImageBtn" class="btn primary">Export edited image</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="label">View</div>
+        <div class="card">
+          <label for="zoomRange" class="row">
+            <span>Zoom</span>
+            <strong id="zoomValue">100%</strong>
+          </label>
+          <input id="zoomRange" type="range" min="25" max="300" step="5" value="100" />
+          <div class="row">
+            <button id="fitBtn" class="btn">Fit view</button>
+            <button id="actualSizeBtn" class="btn">100%</button>
+          </div>
+          <button id="beforeAfterBtn" class="btn">Split view</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="label">History</div>
+        <button id="undoBtn" class="btn">Undo</button>
+        <button id="redoBtn" class="btn">Redo</button>
+      </div>
+
+      <div class="card">
+        <div class="title">Scope</div>
+        <div>Branding refresh: BriteSight Photo Editor theme, stronger logo presence, and teal-led visual styling. No editing functions changed.</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="topbar-brand">
+          <div class="topbar-copy">
+            <div class="topbar-kicker">BriteSight</div>
+            <div class="topbar-title">Photo Editor</div>
+          </div>
+        </div>
+        <div id="statusText">Ready</div>
+      </div>
+      <div id="stage" class="stage">
+        <canvas id="canvas"></canvas>
+      </div>
+    </main>
+
+    <aside class="inspector">
+      <h2>Status</h2>
+      <div id="status"></div>
+    </aside>
+  </div>
+
+  <script src="./script.js"></script>
+</body>
+</html>
