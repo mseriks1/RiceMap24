@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List
@@ -150,13 +151,32 @@ def _default_sqlite_url(data_dir: Path | None = None) -> str:
     return _sqlite_url_from_path(base / "ricemap24.sqlite3")
 
 
+def _clean_database_url(database_url: str) -> str:
+    raw = (database_url or "").strip().strip('\"').strip("'").strip()
+    if not raw:
+        return ""
+
+    # Render's database connection UI can show either a bare URL or a shell
+    # command containing the URL. Accept both to avoid deploy failures caused by
+    # harmless formatting around the actual connection string.
+    match = re.search(r"(postgresql|postgres|sqlite)://[^\s'\"]+", raw, flags=re.IGNORECASE)
+    if match:
+        raw = match.group(0)
+
+    # psycopg and the rest of the app use the standard postgresql:// spelling.
+    # Render may provide postgres://, so normalize it here.
+    if raw.lower().startswith("postgres://"):
+        raw = "postgresql://" + raw[len("postgres://"):]
+    return raw
+
+
 def _database_engine(database_url: str) -> str:
-    raw = (database_url or '').strip().lower()
+    raw = _clean_database_url(database_url).lower()
     if not raw:
         return 'sqlite'
     if raw.startswith('sqlite:///') or raw.startswith('sqlite:////'):
         return 'sqlite'
-    if raw.startswith('postgresql://') or raw.startswith('postgres://'):
+    if raw.startswith('postgresql://'):
         return 'postgresql'
     raise RuntimeError('Unsupported DATABASE_URL. Use sqlite:///... for local development or postgresql://... for staging/production.')
 
@@ -181,7 +201,7 @@ def load_runtime_config() -> RuntimeConfig:
     code_dir = _code_root()
     raw_data_dir = (os.environ.get("RICEMAP_DATA_DIR", "") or "").strip()
     data_dir = Path(raw_data_dir).expanduser().resolve() if raw_data_dir else None
-    database_url = os.environ.get("DATABASE_URL", "").strip() or _default_sqlite_url(data_dir)
+    database_url = _clean_database_url(os.environ.get("DATABASE_URL", "")) or _default_sqlite_url(data_dir)
     database_engine = _database_engine(database_url)
     database_path = _sqlite_path_from_url(database_url) if database_engine == "sqlite" else ""
     uploads_default = (data_dir / "uploads") if data_dir else (code_dir / "uploads")
@@ -220,7 +240,7 @@ def load_runtime_config() -> RuntimeConfig:
         stripe_mode=(os.environ.get("RICEMAP_STRIPE_MODE", "test" if not is_prod else "live") or "test").strip().lower(),
         deployment_provider=(os.environ.get("RICEMAP_DEPLOYMENT_PROVIDER", "local") or "local").strip().lower(),
         deployment_region=(os.environ.get("RICEMAP_DEPLOYMENT_REGION", "") or "").strip(),
-        release_version=(os.environ.get("RICEMAP_RELEASE_VERSION", "step9.41-postgresql-runtime-fix") or "step9.41-postgresql-runtime-fix").strip(),
+        release_version=(os.environ.get("RICEMAP_RELEASE_VERSION", "step9.42-postgres-url-compat-fix") or "step9.42-postgres-url-compat-fix").strip(),
         git_commit_sha=(os.environ.get("RICEMAP_GIT_COMMIT_SHA", "") or "").strip(),
         port=max(1, min(65535, int(os.environ.get("PORT", "8091") or "8091"))),
     )
