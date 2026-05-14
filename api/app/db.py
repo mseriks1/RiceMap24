@@ -3,20 +3,192 @@ from __future__ import annotations
 import json
 import math
 import sqlite3
+import re
 import secrets
 import hashlib
 import hmac
 import time
 from datetime import datetime, date, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 BASE_DIR = Path(__file__).resolve().parent
 from .config import runtime_config
 
 DB_ENGINE = runtime_config.database_engine
+DB_URL = runtime_config.database_url
 DB_PATH = Path(runtime_config.database_path).resolve() if runtime_config.database_path else (BASE_DIR / ".." / ".." / "ricemap24.sqlite3").resolve()
 _SQLITE_PRAGMAS_READY = False
+
+try:
+    import psycopg
+    from psycopg.rows import dict_row
+except Exception:  # psycopg is only required when DATABASE_URL is PostgreSQL
+    psycopg = None
+    dict_row = None
+
+
+def _pg_value(value):
+    if isinstance(value, (datetime, date)):
+        return value.isoformat(sep=" ") if isinstance(value, datetime) else value.isoformat()
+    return value
+
+
+class PgRow(dict):
+    """Small sqlite3.Row-compatible dict row for PostgreSQL results."""
+    def __init__(self, mapping=None, **kwargs):
+        mapping = dict(mapping or {}, **kwargs)
+        super().__init__({k: _pg_value(v) for k, v in mapping.items()})
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return list(self.values())[key]
+        return super().__getitem__(key)
+
+    def keys(self):
+        return super().keys()
+
+
+class PgCursor:
+    def __init__(self, cursor):
+        self._cursor = cursor
+        self.lastrowid = None
+
+    def fetchone(self):
+        row = self._cursor.fetchone()
+        if row is None:
+            return None
+        if isinstance(row, dict):
+            return PgRow(row)
+        return row
+
+    def fetchall(self):
+        rows = self._cursor.fetchall()
+        return [PgRow(r) if isinstance(r, dict) else r for r in rows]
+
+
+class PgConnection:
+    """Minimal sqlite-like connection wrapper around psycopg.
+
+    The existing RiceMap24 data layer was written with sqlite3's API. This wrapper
+    keeps that API stable while allowing staging/production to use PostgreSQL via
+    DATABASE_URL. It intentionally does not add application features.
+    """
+    def __init__(self, conn):
+        self._conn = conn
+
+    def close(self):
+        return self._conn.close()
+
+    def commit(self):
+        return self._conn.commit()
+
+    def rollback(self):
+        return self._conn.rollback()
+
+    def execute(self, sql: str, params: Iterable[Any] | None = None):
+        translated = _pg_translate_sql(sql)
+        lowered = translated.strip().lower()
+        if lowered.startswith("pragma table_info"):
+            table = _pg_extract_pragma_table(sql)
+            rows = _pg_table_info(self._conn, table)
+            return StaticCursor(rows)
+        returning_id = _pg_should_return_id(translated)
+        if returning_id:
+            translated = translated.rstrip().rstrip(';') + " RETURNING id"
+        cur = self._conn.cursor()
+        cur.execute(translated, tuple(params or ()))
+        wrapped = PgCursor(cur)
+        if returning_id:
+            try:
+                row = cur.fetchone()
+                if row:
+                    wrapped.lastrowid = row.get('id') if isinstance(row, dict) else row[0]
+            except Exception:
+                wrapped.lastrowid = None
+        return wrapped
+
+    def executemany(self, sql: str, seq_of_params):
+        translated = _pg_translate_sql(sql)
+        cur = self._conn.cursor()
+        cur.executemany(translated, seq_of_params)
+        return PgCursor(cur)
+
+    def executescript(self, script: str):
+        for stmt in _split_sql_script(script):
+            if stmt.strip():
+                self.execute(stmt)
+        return StaticCursor([])
+
+
+class StaticCursor:
+    def __init__(self, rows):
+        self._rows = [PgRow(r) if isinstance(r, dict) else r for r in rows]
+        self.lastrowid = None
+
+    def fetchone(self):
+        if not self._rows:
+            return None
+        return self._rows.pop(0)
+
+    def fetchall(self):
+        rows = self._rows
+        self._rows = []
+        return rows
+
+
+def _split_sql_script(script: str) -> List[str]:
+    # The schema scripts in this project do not contain semicolons inside strings.
+    return [part.strip() for part in script.split(';') if part.strip()]
+
+
+def _pg_extract_pragma_table(sql: str) -> str:
+    m = re.search(r"PRAGMA\s+table_info\(([^)]+)\)", sql, re.I)
+    return (m.group(1).strip().strip('"') if m else '')
+
+
+def _pg_table_info(conn, table: str):
+    if not table:
+        return []
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT column_name AS name
+        FROM information_schema.columns
+        WHERE table_schema='public' AND table_name=%s
+        ORDER BY ordinal_position
+        """,
+        (table,),
+    )
+    rows = cur.fetchall()
+    return rows or []
+
+
+def _pg_should_return_id(sql: str) -> bool:
+    s = sql.strip()
+    low = s.lower()
+    if not low.startswith('insert into'):
+        return False
+    if ' returning ' in low or ' on conflict ' in low:
+        return False
+    m = re.match(r"insert\s+into\s+([a-zA-Z_][a-zA-Z0-9_]*)", s, re.I)
+    if not m:
+        return False
+    table = m.group(1).lower()
+    return table not in {'admin_settings'}
+
+
+def _pg_translate_sql(sql: str) -> str:
+    out = sql
+    out = re.sub(r"INTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT", "INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY", out, flags=re.I)
+    out = re.sub(r"datetime\('now'\)", "CURRENT_TIMESTAMP", out, flags=re.I)
+    out = re.sub(r"INSERT\s+OR\s+IGNORE\s+INTO", "INSERT INTO", out, flags=re.I)
+    # Convert SQLite's INSERT OR IGNORE pattern to PostgreSQL conflict-safe insert.
+    if re.search(r"^\s*INSERT\s+INTO\s+admin_settings", out, re.I) and "ON CONFLICT" not in out.upper():
+        out = out.rstrip().rstrip(';') + " ON CONFLICT (key) DO NOTHING"
+    # psycopg uses %s parameters, sqlite uses ?. The existing SQL does not use literal question marks.
+    out = out.replace('?', '%s')
+    return out
 
 
 
@@ -607,18 +779,16 @@ def log_supplier_click(
     finally:
         conn.close()
 
-def connect(timeout_seconds: float = 30.0) -> sqlite3.Connection:
-    """Open the SQLite database with safer local-dev concurrency defaults.
-
-    The app can issue several API requests at once while the browser loads the
-    dashboard/listing pages. SQLite only allows one writer at a time, so a short
-    default timeout can produce `database is locked` even when nothing is
-    actually broken. WAL + busy_timeout makes local/dev use much more tolerant
-    without changing the data model.
-    """
+def connect(timeout_seconds: float = 30.0):
+    """Open SQLite locally or PostgreSQL when DATABASE_URL points to PostgreSQL."""
     global _SQLITE_PRAGMAS_READY
-    if DB_ENGINE != "sqlite":
-        raise RuntimeError("PostgreSQL runtime is not enabled in this local MVP yet. Use SQLite locally; use DATABASE_URL for production planning until the SQL layer is ported.")
+    if DB_ENGINE == "postgresql":
+        if psycopg is None:
+            raise RuntimeError("PostgreSQL runtime requires psycopg[binary]. Check api/requirements.txt and redeploy.")
+        kwargs = {"connect_timeout": int(float(timeout_seconds or 30.0)), "row_factory": dict_row}
+        conn = psycopg.connect(DB_URL, **kwargs)
+        return PgConnection(conn)
+
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(DB_PATH), timeout=float(timeout_seconds or 30.0))
     conn.row_factory = sqlite3.Row

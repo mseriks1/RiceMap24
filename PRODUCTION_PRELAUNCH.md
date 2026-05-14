@@ -1,4 +1,4 @@
-# RiceMap24 step 9.40 — production pre-launch
+# RiceMap24 step 9.41 — production pre-launch
 
 This step is not a feature step. It checks the operational conditions needed before real launch.
 
