@@ -2326,7 +2326,14 @@ def list_app_users() -> List[Dict[str, Any]]:
 def init_db() -> None:
     conn = connect()
     try:
+        # PostgreSQL treats many DDL statements and later migration statements as
+        # one transaction unless we commit between phases. Some legacy SQLite
+        # migrations intentionally catch/ignore errors; if one of those errors
+        # happens before the base schema is committed, PostgreSQL can roll back
+        # the newly created tables. Commit the base schema first, then run the
+        # compatibility migrations.
         conn.executescript(SCHEMA_SQL)
+        conn.commit()
         _migrate(conn)
         conn.commit()
     finally:
