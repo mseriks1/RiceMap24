@@ -91,28 +91,43 @@ class PgConnection:
         lowered = translated.strip().lower()
         if lowered.startswith("pragma table_info"):
             table = _pg_extract_pragma_table(sql)
-            rows = _pg_table_info(self._conn, table)
-            return StaticCursor(rows)
+            try:
+                rows = _pg_table_info(self._conn, table)
+                return StaticCursor(rows)
+            except Exception:
+                # PostgreSQL marks the whole transaction as failed after any SQL error.
+                # SQLite code in _migrate() intentionally catches/ignores some migration
+                # errors, so the wrapper must reset the transaction before continuing.
+                self._conn.rollback()
+                raise
         returning_id = _pg_should_return_id(translated)
         if returning_id:
             translated = translated.rstrip().rstrip(';') + " RETURNING id"
         cur = self._conn.cursor()
-        cur.execute(translated, tuple(params or ()))
-        wrapped = PgCursor(cur)
-        if returning_id:
-            try:
-                row = cur.fetchone()
-                if row:
-                    wrapped.lastrowid = row.get('id') if isinstance(row, dict) else row[0]
-            except Exception:
-                wrapped.lastrowid = None
-        return wrapped
+        try:
+            cur.execute(translated, tuple(params or ()))
+            wrapped = PgCursor(cur)
+            if returning_id:
+                try:
+                    row = cur.fetchone()
+                    if row:
+                        wrapped.lastrowid = row.get('id') if isinstance(row, dict) else row[0]
+                except Exception:
+                    wrapped.lastrowid = None
+            return wrapped
+        except Exception:
+            self._conn.rollback()
+            raise
 
     def executemany(self, sql: str, seq_of_params):
         translated = _pg_translate_sql(sql)
         cur = self._conn.cursor()
-        cur.executemany(translated, seq_of_params)
-        return PgCursor(cur)
+        try:
+            cur.executemany(translated, seq_of_params)
+            return PgCursor(cur)
+        except Exception:
+            self._conn.rollback()
+            raise
 
     def executescript(self, script: str):
         for stmt in _split_sql_script(script):
