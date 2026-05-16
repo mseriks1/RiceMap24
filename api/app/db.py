@@ -2610,7 +2610,11 @@ def validate_plan_limits(listing: Dict[str, Any], plan: str) -> None:
 def seed_if_empty(seed_listings: List[Dict[str, Any]]) -> None:
     conn = connect()
     try:
-        cur = conn.execute("SELECT COUNT(*) as c FROM listings")
+        # Staging/local demo seed must not be blocked by an unpublished draft.
+        # With PostgreSQL, a failed/partial signup can leave one draft row in listings;
+        # the old COUNT(*) guard then prevented the intended demo kitchens from being inserted.
+        # Only skip demo seeding when demo/public rows already exist.
+        cur = conn.execute("SELECT COUNT(*) as c FROM listings WHERE published=1 AND plan_active=1 AND (is_demo=1 OR listing_type='demo')")
         c = int(cur.fetchone()["c"])
         if c > 0:
             return

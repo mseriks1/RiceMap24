@@ -9179,7 +9179,7 @@ async def billing_create_checkout_session(payload: dict, request: Request):
         return {
             'ok': True,
             'staging_bypass': True,
-            'url': f'{origin}/dashboard?listing_id={listing_id}&token={token}',
+            'url': f'{origin}/p/{token}',
             'listing_id': listing_id,
             'slug': slug,
             'plan': plan,
