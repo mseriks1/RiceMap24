@@ -10515,11 +10515,17 @@ function pageList(){
     a[path] = value;
     if (path === 'kitchen_name') { d.name = value; d.slug = slugify(value); }
     if (path === 'city') d.city = value;
-    if (path === 'country') { const c = normalizeMarketCountry(value); d.country = c; d.billing_market = c; d.currency = marketForCountry(c).currency; d.tax_behavior = marketForCountry(c).taxBehavior; state.marketCountry = c; a.country = c; }
+    if (path === 'country') {
+      const c = normalizeMarketCountry(value);
+      d.country = c; d.billing_market = c; d.currency = marketForCountry(c).currency; d.tax_behavior = marketForCountry(c).taxBehavior;
+      state.marketCountry = c; a.country = c;
+    }
     if (path === 'email') d.contact.email = value;
     state.draft.saved = false;
     if (state.draft.errors) delete state.draft.errors[path];
-    render();
+    // Do not re-render on every text keystroke: it drops focus and makes users type one character at a time.
+    // Country changes still need a render because prices/currency are recalculated.
+    if (path === 'country') render();
   }
 
   function selectPlan(plan){

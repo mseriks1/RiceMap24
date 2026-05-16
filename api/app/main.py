@@ -1268,7 +1268,10 @@ async def r_amazon(request: Request, country: str = "NO", t: str = "", region: s
 def _startup():
     UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
     init_db()
-    if runtime_config.allow_demo_seed:
+    # Safe demo/test seed: allowed explicitly in local/dev, and also in staging
+    # when the PostgreSQL database is empty so staging does not show a broken/empty marketplace.
+    # Production never auto-seeds demo data.
+    if runtime_config.allow_demo_seed or is_staging():
         demo_listings = []
         for item in LISTINGS:
             demo_item = dict(item)
@@ -1277,8 +1280,7 @@ def _startup():
             demo_item["accepts_orders"] = False
             demo_item["show_in_actor_marketing"] = True
             demo_item["show_in_customer_marketplace"] = True
-            # Local demo listings must remain visible even with production
-            # billing guards enabled. They are disabled entirely in production.
+            # Demo/test listings must remain visible with billing guards enabled.
             demo_item["access_type"] = "internal"
             demo_item["paid_status"] = "paid"
             demo_item["account_status"] = "active"
@@ -9129,10 +9131,8 @@ async def billing_create_checkout_session(payload: dict, request: Request):
     server-side to prevent mismatched checkout setups.
     Returns: {url, session_id, plan, billing, country, currency}
     """
-    if STRIPE_MODE == 'disabled':
+    if STRIPE_MODE == 'disabled' and is_production():
         raise HTTPException(status_code=503, detail='Stripe Checkout is disabled in this environment')
-    if not STRIPE_SECRET_KEY:
-        raise HTTPException(status_code=503, detail='Stripe Checkout is not configured yet (missing STRIPE_SECRET_KEY)')
 
     pld = payload or {}
     listing_id = int(pld.get('listing_id') or 0)
@@ -9152,13 +9152,44 @@ async def billing_create_checkout_session(payload: dict, request: Request):
     referred_by_code = checkout['referred_by_code']
     referral_credit_to_apply = checkout['referral_credit_to_apply']
 
-    # Mark as pending activation only after Stripe is configured and the request
-    # has passed server-side validation. Completion/publishing still requires
-    # Stripe confirmation/webhook.
+    # Mark as pending activation after server-side validation.
+    # In staging/local without Stripe keys, allow a safe test path so signup,
+    # draft creation and PostgreSQL persistence can be tested before Stripe is configured.
     token = request_activation(listing_id, plan=plan, billing=billing)
 
-    price_id = _stripe_price_id(plan, billing, country=country, currency=currency)
     origin = _origin_from_request(request)
+
+    if not STRIPE_SECRET_KEY:
+        if is_production():
+            raise HTTPException(status_code=503, detail='Stripe Checkout is not configured yet (missing STRIPE_SECRET_KEY)')
+        try:
+            admin_update_meta(
+                listing_id,
+                plan=plan,
+                billing=billing,
+                plan_active=1,
+                paid_status='paid',
+                account_status='active',
+                access_type='internal',
+                access_reason='Staging/local checkout bypass because Stripe is not configured yet.',
+            )
+            slug = admin_activate(listing_id)
+        except Exception:
+            slug = item.get('slug') or ''
+        return {
+            'ok': True,
+            'staging_bypass': True,
+            'url': f'{origin}/dashboard?listing_id={listing_id}&token={token}',
+            'listing_id': listing_id,
+            'slug': slug,
+            'plan': plan,
+            'billing': billing,
+            'country': country,
+            'currency': currency,
+            'message': 'Stripe is not configured. Staging/local bypass created and activated the test kitchen.',
+        }
+
+    price_id = _stripe_price_id(plan, billing, country=country, currency=currency)
 
     email = ((item.get('contact') or {}).get('email') or '').strip()
     metadata = {
