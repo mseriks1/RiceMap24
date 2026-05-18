@@ -1837,8 +1837,9 @@ function topBar(){
         link('/', t('nav.explore')),
               ]),
       el('div', { class:'topbar-actions' }, [
+        ownerDashboardPath() ? button(state.lang==='no' ? 'Mitt dashboard' : 'My dashboard', { variant:'outline', onclick: ()=>navigate(ownerDashboardPath()), className:'ownerDashboardShortcut' }) : null,
         button(t('nav.list'), { onclick: ()=>navigate('/list'), className:'registerKitchenBtn' }),
-      ])
+      ].filter(Boolean))
     ]),
     languageSelect('lang-mobile')
   ]);
@@ -1867,7 +1868,7 @@ function footer(){
               class:'muted',
               style:'text-decoration:none; opacity:.7',
               onclick:(e)=>{ e.preventDefault(); navigate('/admin'); }
-            }, ['Admin']) , ' · v9.35.2'
+            }, ['Admin']) , ' · v9.47'
           ]),
         ]),
       ]),
@@ -3515,7 +3516,10 @@ function pageCook(listing){
             el('h1', { style:'margin:0' }, [listing.name]),
             el('div', { class:'muted' }, [`${listing.area} · ${listing.city}`]),
           ].filter(Boolean)),
-          el('div', { class:'hide-mobile' }, [button(t('ui.back'), { variant:'outline', onclick: ()=>history.back() })])
+          el('div', { class:'hide-mobile row', style:'gap:8px; flex-wrap:wrap' }, [
+            ownerDashboardPath() ? button(state.lang==='no' ? 'Mitt dashboard' : 'My dashboard', { variant:'outline', onclick: ()=>navigate(ownerDashboardPath()) }) : null,
+            button(t('ui.back'), { variant:'outline', onclick: ()=>history.back() })
+          ].filter(Boolean))
         ]),
         el('div', { class:'row', style:'margin-top:10px; gap:8px; flex-wrap:wrap' }, [
           ...cuisinePills,
@@ -10998,6 +11002,29 @@ function copyOrderMessage(listing){
   );
 }
 
+
+function setOwnerDashboardToken(token){
+  const t = String(token || '').trim();
+  if (!t) return;
+  try { localStorage.setItem('rm_owner_dashboard_token', t); } catch(_) {}
+  if (!state.ui) state.ui = {};
+  state.ui.ownerDashboardToken = t;
+}
+
+function getOwnerDashboardToken(){
+  if (state.ui && state.ui.ownerDashboardToken) return state.ui.ownerDashboardToken;
+  try {
+    const t = localStorage.getItem('rm_owner_dashboard_token') || '';
+    if (t && state.ui) state.ui.ownerDashboardToken = t;
+    return t;
+  } catch(_) { return ''; }
+}
+
+function ownerDashboardPath(){
+  const token = getOwnerDashboardToken();
+  return token ? ('/p/' + encodeURIComponent(token)) : '';
+}
+
 function navigate(path){
   history.pushState({}, '', path);
   onRoute();
@@ -11022,10 +11049,15 @@ function onRoute(){
   }
 
   if (parts[0] === 'c' && parts[1]){
-    // Render a loading state immediately to avoid a blank screen on hard refresh.
-    state.currentListing = null;
+    // Keep an already-loaded/list-card version visible while the full kitchen payload loads.
+    // This reduces the visible blink when moving from Explore to a kitchen page.
+    const slug = parts[1];
+    const existing = (state.currentListing && state.currentListing.slug === slug)
+      ? state.currentListing
+      : ((state.listings || []).find(x => x && x.slug === slug) || null);
+    state.currentListing = existing;
     render();
-    loadListing(parts[1]).catch((e)=>{
+    loadListing(slug).catch((e)=>{
       console.error(e);
       // keep pageNotFound view instead of blank
       state.currentListing = null;
@@ -11037,14 +11069,19 @@ function onRoute(){
   }
 
   if (parts[0] === 'p' && parts[1]){
-    // Render a loading state immediately to avoid a blank screen on hard refresh.
-    state.currentListing = null;
+    // Store the owner token locally so logged-in kitchen owners can return to their dashboard
+    // from Explore/public pages without relying on the browser Back button.
+    const token = parts[1];
+    setOwnerDashboardToken(token);
     state.preview.active = true;
-    state.preview.token = parts[1];
+    state.preview.token = token;
     state.preview.err = null;
+    // Do not clear a matching dashboard payload before reloading; it causes a visible blink.
+    const matchesCurrent = state.currentListing && (state.currentListing.preview_token === token || String(state.currentListing.slug || '') === String(token));
+    if (!matchesCurrent) state.currentListing = null;
     render();
 
-    loadPreview(parts[1]).catch((e)=>{
+    loadPreview(token).catch((e)=>{
       console.error(e);
       state.preview.err = (e && e.message) ? e.message : String(e);
       render();
