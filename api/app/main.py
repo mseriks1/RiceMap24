@@ -127,6 +127,8 @@ from .db import (
     list_app_error_logs,
     cleanup_app_error_logs,
     connect,
+    set_listing_coordinates,
+    reset_admin_app_users,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -9107,6 +9109,39 @@ def get_preview(token: str):
     return item
 
 
+
+
+def _best_listing_location_query(item: dict) -> str:
+    parts = []
+    postcode = str((item or {}).get("postcode") or "").strip()
+    city = str((item or {}).get("city") or "").strip()
+    area = str((item or {}).get("area") or "").strip()
+    country = str((item or {}).get("country") or "").strip()
+    for x in (postcode, city, area, country):
+        if x and x not in parts:
+            parts.append(x)
+    return ", ".join(parts)
+
+
+def _geocode_listing_if_missing(listing_id: int, item: Optional[dict] = None) -> None:
+    """Best-effort geocode for new/activated kitchens.
+
+    Public map/nearest search require lat/lng. If Nominatim is unavailable,
+    signup must still succeed; admin can retry later by editing/re-saving.
+    """
+    try:
+        item = item or get_by_id(int(listing_id)) or {}
+        if item.get("lat") is not None and item.get("lng") is not None:
+            return
+        q = _best_listing_location_query(item)
+        if not q:
+            return
+        res = geocode(q, country=str(item.get("country") or "").strip() or None)
+        if res and res.get("ok") and res.get("lat") is not None and res.get("lng") is not None:
+            set_listing_coordinates(int(listing_id), float(res["lat"]), float(res["lng"]))
+    except Exception:
+        pass
+
 # --- Draft / activation ---
 @app.post("/api/drafts")
 def create_listing_draft(payload: dict):
@@ -9118,6 +9153,8 @@ def create_listing_draft(payload: dict):
         _id, slug, token = create_draft(payload)
         try:
             item = get_by_id(int(_id))
+            _geocode_listing_if_missing(int(_id), item)
+            item = get_by_id(int(_id)) or item
             email = str(((payload or {}).get("contact") or {}).get("email") or "").strip().lower()
             password = str((payload or {}).get("owner_password") or "")
             display_name = str((payload or {}).get("owner_name") or (payload or {}).get("name") or "Kitchen owner").strip()
@@ -9220,6 +9257,7 @@ async def billing_create_checkout_session(payload: dict, request: Request):
                 access_reason='Staging/local checkout bypass because Stripe is not configured yet.',
             )
             slug = admin_activate(listing_id)
+            _geocode_listing_if_missing(listing_id, get_by_id(listing_id))
         except Exception:
             slug = item.get('slug') or ''
         return {
@@ -9548,6 +9586,32 @@ async def auth_login(payload: dict, request: Request):
     response = JSONResponse(payload_out)
     response.set_cookie(SESSION_COOKIE_NAME, token, **_session_cookie_kwargs())
     return response
+
+
+
+
+@app.post("/api/auth/dev-reset-admin")
+async def auth_dev_reset_admin(payload: dict, request: Request):
+    """Non-production recovery: reset the local/staging admin login.
+
+    This is for staging databases where an old admin password no longer works.
+    It replaces only app_users with role=admin and admin sessions. It does not
+    delete listings, owner users, kitchen pages, images, tickets or settings.
+    """
+    if is_production():
+        raise HTTPException(status_code=404, detail="Not found")
+    p = payload or {}
+    if str(p.get("confirm") or "").strip().upper() != "RESET":
+        raise HTTPException(status_code=400, detail="Type RESET to confirm")
+    email = str(p.get("email") or "").strip().lower()
+    password = str(p.get("password") or "")
+    display_name = str(p.get("display_name") or "Admin").strip() or "Admin"
+    try:
+        user = reset_admin_app_users(email, password, display_name=display_name)
+        log_admin_activity("auth_admin_reset", actor="system", entity_type="app_user", entity_id=int(user.get("id") or 0), title="Reset local/staging admin login", details={"email": email})
+        return {"ok": True, "user": user}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @app.post("/api/auth/logout")

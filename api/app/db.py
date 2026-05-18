@@ -3181,6 +3181,50 @@ def get_by_id(_id: int) -> Optional[Dict[str, Any]]:
     finally:
         conn.close()
 
+
+
+def set_listing_coordinates(listing_id: int, lat: Optional[float], lng: Optional[float]) -> None:
+    """Store approximate geocoded coordinates on a listing and in data_json.
+
+    Used so newly registered kitchens can appear in map view and nearest search.
+    """
+    if lat is None or lng is None:
+        return
+    conn = connect()
+    try:
+        row = conn.execute("SELECT * FROM listings WHERE id=?", (int(listing_id),)).fetchone()
+        if not row:
+            raise KeyError("not found")
+        listing = row_to_listing(row)
+        listing["lat"] = float(lat)
+        listing["lng"] = float(lng)
+        data_json = json.dumps(listing, ensure_ascii=False)
+        conn.execute("UPDATE listings SET lat=?, lng=?, data_json=?, updated_at=datetime('now') WHERE id=?", (float(lat), float(lng), data_json, int(listing_id)))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def reset_admin_app_users(email: str, password: str, display_name: str = "Admin") -> Dict[str, Any]:
+    """Non-production recovery helper: replace local/staging admin login.
+
+    This does not affect owner users or listings. It is intentionally available
+    only through the API route, which blocks production.
+    """
+    email_norm = (email or "").strip().lower()
+    if not email_norm or "@" not in email_norm:
+        raise ValueError("Valid email is required")
+    if len(password or "") < 6:
+        raise ValueError("Password must be at least 6 characters")
+    conn = connect()
+    try:
+        conn.execute("DELETE FROM app_sessions WHERE role='admin'")
+        conn.execute("DELETE FROM app_users WHERE role='admin'")
+        conn.commit()
+    finally:
+        conn.close()
+    return create_app_user(email_norm, password, display_name=display_name or "Admin", role="admin", active=True, email_verified=True)
+
 def get_by_preview_token(token: str) -> Optional[Dict[str, Any]]:
     conn = connect()
     try:

@@ -1195,13 +1195,17 @@ function adminCanCreateLocalAdmin(){
   if (bs.can_create_with_legacy) return true;
   return false;
 }
+function adminCanResetLocalAdmin(){
+  const bs = state.admin.bootstrapStatus || {};
+  return !!bs && !bs.production && !!bs.has_admin;
+}
 function adminBootstrapHint(){
   const bs = state.admin.bootstrapStatus || {};
   const no = state.lang === 'no';
   if (!state.admin.bootstrapChecked) return no ? 'Sjekker admin-oppsett…' : 'Checking admin setup…';
   if (bs.production) return no ? 'Produksjon: admin-brukere må opprettes kontrollert på server, ikke fra offentlig login-skjerm.' : 'Production: admin users must be created through a controlled server-side process, not from the public login screen.';
   if (bs.can_create_first_admin) return no ? 'Ingen lokal admin-bruker finnes i denne databasen. Opprett første lokale admin her.' : 'No local admin user exists in this database. Create the first local admin here.';
-  if (bs.has_admin) return no ? 'Lokal admin-bruker finnes allerede. Bruk Logg inn. Opprett-knappen vises bare ved første lokale admin eller via legacy-fallback.' : 'A local admin user already exists. Use Log in. The create button is only shown for the first local admin or via legacy fallback.';
+  if (bs.has_admin) return no ? 'Lokal admin-bruker finnes allerede. Bruk Logg inn. Hvis gammel admin ikke virker i staging, kan du nullstille lokal admin under.' : 'A local admin user already exists. Use Log in. If the old staging admin no longer works, reset the local admin below.';
   return no ? 'Logg inn med admin-bruker.' : 'Log in with an admin user.';
 }
 async function adminLogin(){
@@ -1245,6 +1249,24 @@ async function adminCreateLocalAdmin(){
     state.admin.createAdminBusy = false; render();
   }
 }
+
+async function adminResetLocalAdmin(){
+  const email = String(state.admin.loginEmail || '').trim();
+  const password = String(state.admin.loginPassword || '');
+  if(!email || !password){ state.admin.loginError = state.lang==='no'?'Skriv ny admin-e-post og passord først.':'Enter the new admin email and password first.'; render(); return; }
+  const c = prompt(state.lang==='no' ? 'Skriv RESET for å nullstille lokal/staging admin. Dette sletter ikke kjøkken.' : 'Type RESET to reset local/staging admin. This does not delete kitchens.');
+  if(String(c || '').trim().toUpperCase() !== 'RESET') return;
+  state.admin.createAdminBusy = true; state.admin.loginError=''; render();
+  try{
+    await apiJson('POST', '/api/auth/dev-reset-admin', { email, password, display_name:'Admin', confirm:'RESET' });
+    await adminLogin();
+  }catch(e){
+    state.admin.loginError = e?.message || String(e);
+  }finally{
+    state.admin.createAdminBusy = false; render();
+  }
+}
+
 async function adminRefreshFromLogin(){
   if (typeof window.__rm24AdminRefresh === 'function') return await window.__rm24AdminRefresh();
 }
@@ -10653,7 +10675,7 @@ function listFallbackText(lang){
 
 function listUiMsg(lang, key){
   const data = {
-    en:{nameReq:'Name is required.',emailReq:'Email is required.',emailValid:'Enter a valid email address.',passwordReq:'Password is required.',passwordLen:'Password should be at least 8 characters.',countryReq:'Country is required.',cityReq:'City is required.',kitchenReq:'Kitchen name is required.',stripeUnavailable:'Stripe Checkout is not configured yet. The page is saved as a draft, but it is not activated without payment.',saveFailed:'Save failed: ',checkoutFailed:'Checkout failed: ',missingCheckout:'Missing checkout URL'},
+    en:{nameReq:'Name is required.',emailReq:'Email is required.',emailValid:'Enter a valid email address.',passwordReq:'Password is required.',passwordLen:'Password should be at least 6 characters.',countryReq:'Country is required.',cityReq:'City is required.',kitchenReq:'Kitchen name is required.',stripeUnavailable:'Stripe Checkout is not configured yet. The page is saved as a draft, but it is not activated without payment.',saveFailed:'Save failed: ',checkoutFailed:'Checkout failed: ',missingCheckout:'Missing checkout URL'},
     no:{nameReq:'Navn mangler.',emailReq:'E-post mangler.',emailValid:'Skriv inn en gyldig e-postadresse.',passwordReq:'Passord mangler.',passwordLen:'Passord bør ha minst 6 tegn.',countryReq:'Land mangler.',cityReq:'By mangler.',kitchenReq:'Kjøkkennavn mangler.',stripeUnavailable:'Stripe Checkout er ikke konfigurert ennå. Siden er lagret som utkast, men aktiveres ikke uten betaling.',saveFailed:'Lagring feilet: ',checkoutFailed:'Betaling feilet: ',missingCheckout:'Mangler checkout-lenke'},
     sv:{nameReq:'Namn saknas.',emailReq:'E-post saknas.',emailValid:'Ange en giltig e-postadress.',passwordReq:'Lösenord saknas.',passwordLen:'Lösenordet bör ha minst 6 tecken.',countryReq:'Land saknas.',cityReq:'Stad saknas.',kitchenReq:'Köksnamn saknas.',stripeUnavailable:'Stripe Checkout är inte konfigurerat ännu. Sidan är sparad som utkast, men aktiveras inte utan betalning.',saveFailed:'Kunde inte spara: ',checkoutFailed:'Betalning misslyckades: ',missingCheckout:'Checkout-länk saknas'},
     da:{nameReq:'Navn mangler.',emailReq:'E-mail mangler.',emailValid:'Indtast en gyldig e-mailadresse.',passwordReq:'Adgangskode mangler.',passwordLen:'Adgangskoden bør have mindst 6 tegn.',countryReq:'Land mangler.',cityReq:'By mangler.',kitchenReq:'Køkkennavn mangler.',stripeUnavailable:'Stripe Checkout er ikke konfigureret endnu. Siden er gemt som kladde, men aktiveres ikke uden betaling.',saveFailed:'Lagring mislykkedes: ',checkoutFailed:'Betaling mislykkedes: ',missingCheckout:'Checkout-link mangler'},
@@ -10841,7 +10863,7 @@ function pageList(){
     req(!!(a.email||'').trim(), 'email', listUiMsg(state.lang,'emailReq'), listUiMsg(state.lang,'emailReq'));
     req(/^\S+@\S+\.\S+$/.test((a.email||'').trim()), 'email', listUiMsg(state.lang,'emailValid'), listUiMsg(state.lang,'emailValid'));
     req(!!(a.password||'').trim(), 'password', listUiMsg(state.lang,'passwordReq'), listUiMsg(state.lang,'passwordReq'));
-    req(String(a.password||'').length >= 8, 'password', listUiMsg(state.lang,'passwordLen'), listUiMsg(state.lang,'passwordLen'));
+    req(String(a.password||'').length >= 6, 'password', listUiMsg(state.lang,'passwordLen'), listUiMsg(state.lang,'passwordLen'));
     req(!!(a.password_confirm||'').trim(), 'password_confirm', authT('confirmPasswordReq'), authT('confirmPasswordReq'));
     req(String(a.password||'') === String(a.password_confirm||''), 'password_confirm', authT('passwordMismatch'), authT('passwordMismatch'));
     req(!!(a.country||'').trim(), 'country', listUiMsg(state.lang,'countryReq'), listUiMsg(state.lang,'countryReq'));
@@ -15177,9 +15199,10 @@ el('div', { class:'row', style:'gap:10px; flex-wrap:wrap; margin-top:10px' }, [
           state.admin.loginError ? el('div', { class:'adminError' }, [state.admin.loginError]) : null,
           el('div', { class:'adminLoginActions' }, [
             button(state.admin.loginBusy ? (state.lang==='no'?'Logger inn…':'Logging in…') : (state.lang==='no'?'Logg inn':'Log in'), { variant:'primary', onclick:adminLogin }),
-            adminCanCreateLocalAdmin() ? button(state.admin.createAdminBusy ? (state.lang==='no'?'Oppretter…':'Creating…') : (state.lang==='no'?'Opprett første lokal admin':'Create first local admin'), { variant:'outline', onclick:adminCreateLocalAdmin }) : null
+            adminCanCreateLocalAdmin() ? button(state.admin.createAdminBusy ? (state.lang==='no'?'Oppretter…':'Creating…') : (state.lang==='no'?'Opprett første lokal admin':'Create first local admin'), { variant:'outline', onclick:adminCreateLocalAdmin }) : null,
+            adminCanResetLocalAdmin() ? button(state.admin.createAdminBusy ? (state.lang==='no'?'Nullstiller…':'Resetting…') : (state.lang==='no'?'Nullstill lokal admin':'Reset local admin'), { variant:'outline', onclick:adminResetLocalAdmin }) : null
           ].filter(Boolean)),
-          state.admin.bootstrapStatus && state.admin.bootstrapStatus.has_admin && !adminCanCreateLocalAdmin() ? el('div', { class:'adminLoginHelp' }, [state.lang==='no'?'Hvis du har pakket ut ny zip, må du opprette lokal admin på nytt bare hvis databasen er ny. Hvis admin finnes, bruk Logg inn.':'If you unpacked a new zip, create a local admin again only when the database is new. If an admin already exists, use Log in.']) : null,
+          state.admin.bootstrapStatus && state.admin.bootstrapStatus.has_admin && !adminCanCreateLocalAdmin() ? el('div', { class:'adminLoginHelp' }, [state.lang==='no'?'Hvis gammel admin ikke virker: skriv ønsket admin-e-post og passord i feltene, trykk Nullstill lokal admin, og bekreft med RESET. Dette påvirker ikke kjøkken eller aktørkontoer.':'If the old admin does not work: enter the desired admin email and password, click Reset local admin, and confirm with RESET. This does not affect kitchens or owner accounts.']) : null,
           el('details', { class:'adminLegacyDetails' }, [
             el('summary', {}, [state.lang==='no'?'Midlertidig legacy-nøkkel for dev':'Temporary legacy key for dev']),
             el('input', { class:'input adminKeyInput', placeholder:'Admin key', value: state.admin.key || '', oninput:(e)=>{ state.admin.key = e.target.value; localStorage.setItem('rm_admin_key', state.admin.key); render(); } })
@@ -17560,6 +17583,7 @@ el('div', { class:'row', style:'gap:10px; flex-wrap:wrap; margin-top:10px' }, [
       el('div', { class:'adminLoginActions' }, [
         button(state.admin.loginBusy ? (state.lang==='no'?'Logger inn…':'Logging in…') : (state.lang==='no'?'Logg inn':'Log in'), { variant:'primary', onclick:adminLogin }),
         adminCanCreateLocalAdmin() ? button(state.admin.createAdminBusy ? (state.lang==='no'?'Oppretter…':'Creating…') : (state.lang==='no'?'Opprett lokal admin':'Create local admin'), { variant:'outline', onclick:adminCreateLocalAdmin }) : null,
+        adminCanResetLocalAdmin() ? button(state.admin.createAdminBusy ? (state.lang==='no'?'Nullstiller…':'Resetting…') : (state.lang==='no'?'Nullstill lokal admin':'Reset local admin'), { variant:'outline', onclick:adminResetLocalAdmin }) : null,
         button(state.lang==='no'?'Skjul legacy-key og bruk login':'Hide legacy key and use login', { variant:'outline', onclick:()=>{ state.admin.key=''; localStorage.removeItem('rm_admin_key'); render(); } })
       ].filter(Boolean))
     ].filter(Boolean))
