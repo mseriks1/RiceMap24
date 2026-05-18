@@ -240,7 +240,7 @@ def load_runtime_config() -> RuntimeConfig:
         stripe_mode=(os.environ.get("RICEMAP_STRIPE_MODE", "test" if not is_prod else "live") or "test").strip().lower(),
         deployment_provider=(os.environ.get("RICEMAP_DEPLOYMENT_PROVIDER", "local") or "local").strip().lower(),
         deployment_region=(os.environ.get("RICEMAP_DEPLOYMENT_REGION", "") or "").strip(),
-        release_version=(os.environ.get("RICEMAP_RELEASE_VERSION", "step9.52-login-auth-i18n") or "step9.52-login-auth-i18n").strip(),
+        release_version=(os.environ.get("RICEMAP_RELEASE_VERSION", "step9.53-owner-header-state-fix") or "step9.53-owner-header-state-fix").strip(),
         git_commit_sha=(os.environ.get("RICEMAP_GIT_COMMIT_SHA", "") or "").strip(),
         port=max(1, min(65535, int(os.environ.get("PORT", "8091") or "8091"))),
     )

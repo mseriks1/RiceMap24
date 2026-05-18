@@ -2038,9 +2038,9 @@ function topBar(){
         link('/', t('nav.explore')),
               ]),
       el('div', { class:'topbar-actions' }, [
-        isOwnerLoggedIn() && ownerDashboardPath() ? button(authT('myDashboard'), { variant:'outline', onclick: ()=>navigate(ownerDashboardPath()), className:'ownerDashboardShortcut' }) : null,
-        state.auth && state.auth.authenticated ? button(authT('logout'), { variant:'outline', onclick: ownerLogout, className:'ownerLogoutBtn' }) : (!(location.pathname || '').startsWith('/login') ? button(authT('login'), { variant:'outline', onclick: ()=>navigate('/login'), className:'ownerLoginBtn' }) : null),
-        button(authT('registerKitchen'), { onclick: ()=>navigate('/list'), className:'registerKitchenBtn' }),
+        isOwnerContext() && ownerDashboardPath() ? button(authT('myDashboard'), { variant:'outline', onclick: ()=>navigate(ownerDashboardPath()), className:'ownerDashboardShortcut' }) : null,
+        isOwnerContext() ? button(authT('logout'), { variant:'outline', onclick: ownerLogout, className:'ownerLogoutBtn' }) : (!(location.pathname || '').startsWith('/login') ? button(authT('login'), { variant:'outline', onclick: ()=>navigate('/login'), className:'ownerLoginBtn' }) : null),
+        !isOwnerContext() ? button(authT('registerKitchen'), { onclick: ()=>navigate('/list'), className:'registerKitchenBtn' }) : null,
       ].filter(Boolean))
     ]),
     languageSelect('lang-mobile')
@@ -3719,7 +3719,7 @@ function pageCook(listing){
             el('div', { class:'muted' }, [`${listing.area} · ${listing.city}`]),
           ].filter(Boolean)),
           el('div', { class:'hide-mobile row', style:'gap:8px; flex-wrap:wrap' }, [
-            ownerDashboardPath() ? button(authT('myDashboard'), { variant:'outline', onclick: ()=>navigate(ownerDashboardPath()) }) : null,
+            isOwnerContext() && ownerDashboardPath() ? button(authT('myDashboard'), { variant:'outline', onclick: ()=>navigate(ownerDashboardPath()) }) : null,
             button(t('ui.back'), { variant:'outline', onclick: ()=>history.back() })
           ].filter(Boolean))
         ]),
@@ -11228,13 +11228,28 @@ function getOwnerDashboardToken(){
   } catch(_) { return ''; }
 }
 
+function currentOwnerTokenFromRoute(){
+  const parts = (location.pathname || '/').split('/').filter(Boolean);
+  if (parts[0] === 'p' && parts[1]) return decodeURIComponent(parts[1]);
+  return '';
+}
+
 function ownerDashboardPath(){
-  // Dashboard shortcut should only be visible after a verified owner session.
-  // A saved local token alone is not treated as logged-in state.
-  if (!(state.auth && state.auth.authenticated && state.auth.owner_dashboard)) return '';
-  const od = state.auth.owner_dashboard;
-  const token = od && (od.preview_token || (od.path || '').split('/p/')[1]);
+  // Prefer verified owner session, but also treat the active /p/<token> owner
+  // dashboard route as owner context. This prevents the header from showing
+  // "Log in" while the kitchen owner is already inside the dashboard.
+  const od = state.auth && state.auth.authenticated ? state.auth.owner_dashboard : null;
+  const sessionToken = od && (od.preview_token || (od.path || '').split('/p/')[1]);
+  const routeToken = currentOwnerTokenFromRoute();
+  const localToken = getOwnerDashboardToken();
+  const token = sessionToken || routeToken || localToken;
   return token ? ('/p/' + encodeURIComponent(token)) : '';
+}
+
+function isOwnerContext(){
+  if (isOwnerLoggedIn()) return true;
+  if (currentOwnerTokenFromRoute()) return true;
+  return false;
 }
 
 function applyAuthData(data){
