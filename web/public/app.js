@@ -906,6 +906,206 @@ function t(key){
   return valEn ?? key;
 }
 
+
+const authCopy = {
+  en: {
+    login:'Log in', logout:'Log out', myDashboard:'My dashboard', registerKitchen:'Register kitchen',
+    welcomeTitle:'Welcome back to your kitchen', welcomeText:'Log in to update your menu, photos, prices, visibility and owner tools.',
+    featureDashboardTitle:'Dashboard', featureDashboardText:'Return directly to your kitchen workspace.',
+    featureMenuTitle:'Menu and photos', featureMenuText:'Changes are stored in PostgreSQL.',
+    featureVisibilityTitle:'Visibility', featureVisibilityText:'Keep your Explore listing current.',
+    ownerLogin:'Kitchen owner login', loginDashboard:'Log in to dashboard', loginHelp:'Use the email and password you used when registering your kitchen.',
+    email:'Email', password:'Password', loggingIn:'Logging in…', exploreKitchens:'Explore kitchens', forgotPassword:'Forgot password?',
+    resetInfo:'Password reset by email will be activated when email delivery is configured. For now, reset must be handled manually in test/staging.',
+    noKitchen:'No kitchen yet?', registerHelp:'Register a new kitchen and return here later to log in.', registerNewKitchen:'Register a new kitchen',
+    confirmPassword:'Confirm password', confirmPasswordPh:'Type the password again', confirmPasswordReq:'Confirm your password.', passwordMismatch:'Passwords do not match.'
+  },
+  no: {
+    login:'Logg inn', logout:'Logg ut', myDashboard:'Mitt dashboard', registerKitchen:'Registrer kjøkken',
+    welcomeTitle:'Velkommen tilbake til kjøkkenet ditt', welcomeText:'Logg inn for å oppdatere meny, bilder, priser, synlighet og verktøy.',
+    featureDashboardTitle:'Dashboard', featureDashboardText:'Gå rett tilbake til kjøkkensiden din.',
+    featureMenuTitle:'Meny og bilder', featureMenuText:'Endringer lagres i PostgreSQL.',
+    featureVisibilityTitle:'Synlighet', featureVisibilityText:'Hold Explore-siden oppdatert.',
+    ownerLogin:'Aktørinnlogging', loginDashboard:'Logg inn på dashboard', loginHelp:'Bruk e-posten og passordet du registrerte kjøkkenet med.',
+    email:'E-post', password:'Passord', loggingIn:'Logger inn…', exploreKitchens:'Se kjøkken', forgotPassword:'Glemt passord?',
+    resetInfo:'Tilbakestilling av passord via e-post kommer når e-postoppsettet er aktivert. Foreløpig må dette håndteres manuelt i test/staging.',
+    noKitchen:'Har du ikke kjøkken ennå?', registerHelp:'Registrer et nytt kjøkken og kom tilbake hit senere for innlogging.', registerNewKitchen:'Registrer nytt kjøkken',
+    confirmPassword:'Bekreft passord', confirmPasswordPh:'Skriv passordet én gang til', confirmPasswordReq:'Bekreft passordet.', passwordMismatch:'Passordene er ikke like.'
+  },
+  sv: {
+    login:'Logga in', logout:'Logga ut', myDashboard:'Min dashboard', registerKitchen:'Registrera kök',
+    welcomeTitle:'Välkommen tillbaka till ditt kök', welcomeText:'Logga in för att uppdatera meny, bilder, priser, synlighet och ägarverktyg.',
+    featureDashboardTitle:'Dashboard', featureDashboardText:'Gå direkt tillbaka till din köksyta.',
+    featureMenuTitle:'Meny och bilder', featureMenuText:'Ändringar sparas i PostgreSQL.',
+    featureVisibilityTitle:'Synlighet', featureVisibilityText:'Håll din Explore-listning uppdaterad.',
+    ownerLogin:'Inloggning för köksägare', loginDashboard:'Logga in till dashboard', loginHelp:'Använd e-post och lösenord från registreringen av ditt kök.',
+    email:'E-post', password:'Lösenord', loggingIn:'Loggar in…', exploreKitchens:'Utforska kök', forgotPassword:'Glömt lösenord?',
+    resetInfo:'Återställning av lösenord via e-post aktiveras när e-postutskick är konfigurerat. Tills vidare hanteras detta manuellt i test/staging.',
+    noKitchen:'Inget kök ännu?', registerHelp:'Registrera ett nytt kök och kom tillbaka hit senare för att logga in.', registerNewKitchen:'Registrera nytt kök',
+    confirmPassword:'Bekräfta lösenord', confirmPasswordPh:'Skriv lösenordet en gång till', confirmPasswordReq:'Bekräfta lösenordet.', passwordMismatch:'Lösenorden matchar inte.'
+  },
+  da: {
+    login:'Log ind', logout:'Log ud', myDashboard:'Mit dashboard', registerKitchen:'Registrer køkken',
+    welcomeTitle:'Velkommen tilbage til dit køkken', welcomeText:'Log ind for at opdatere menu, billeder, priser, synlighed og ejer-værktøjer.',
+    featureDashboardTitle:'Dashboard', featureDashboardText:'Gå direkte tilbage til dit køkkenområde.',
+    featureMenuTitle:'Menu og billeder', featureMenuText:'Ændringer gemmes i PostgreSQL.',
+    featureVisibilityTitle:'Synlighed', featureVisibilityText:'Hold din Explore-visning opdateret.',
+    ownerLogin:'Login for køkkenejer', loginDashboard:'Log ind på dashboard', loginHelp:'Brug den e-mail og adgangskode, du brugte ved registrering af køkkenet.',
+    email:'E-mail', password:'Adgangskode', loggingIn:'Logger ind…', exploreKitchens:'Se køkkener', forgotPassword:'Glemt adgangskode?',
+    resetInfo:'Nulstilling af adgangskode via e-mail aktiveres, når e-mail er konfigureret. Indtil da håndteres det manuelt i test/staging.',
+    noKitchen:'Har du ikke et køkken endnu?', registerHelp:'Registrer et nyt køkken og vend tilbage hertil senere for at logge ind.', registerNewKitchen:'Registrer nyt køkken',
+    confirmPassword:'Bekræft adgangskode', confirmPasswordPh:'Skriv adgangskoden én gang til', confirmPasswordReq:'Bekræft adgangskoden.', passwordMismatch:'Adgangskoderne er ikke ens.'
+  },
+  es: {
+    login:'Iniciar sesión', logout:'Cerrar sesión', myDashboard:'Mi panel', registerKitchen:'Registrar cocina',
+    welcomeTitle:'Bienvenido de nuevo a tu cocina', welcomeText:'Inicia sesión para actualizar menú, fotos, precios, visibilidad y herramientas.',
+    featureDashboardTitle:'Panel', featureDashboardText:'Vuelve directamente a tu espacio de cocina.',
+    featureMenuTitle:'Menú y fotos', featureMenuText:'Los cambios se guardan en PostgreSQL.',
+    featureVisibilityTitle:'Visibilidad', featureVisibilityText:'Mantén actualizada tu ficha en Explore.',
+    ownerLogin:'Acceso para propietarios', loginDashboard:'Iniciar sesión en el panel', loginHelp:'Usa el correo y la contraseña con los que registraste tu cocina.',
+    email:'Correo electrónico', password:'Contraseña', loggingIn:'Iniciando sesión…', exploreKitchens:'Explorar cocinas', forgotPassword:'¿Olvidaste la contraseña?',
+    resetInfo:'El restablecimiento de contraseña por correo se activará cuando el envío de correo esté configurado. Por ahora debe gestionarse manualmente en test/staging.',
+    noKitchen:'¿Aún no tienes cocina?', registerHelp:'Registra una nueva cocina y vuelve aquí más tarde para iniciar sesión.', registerNewKitchen:'Registrar nueva cocina',
+    confirmPassword:'Confirmar contraseña', confirmPasswordPh:'Escribe la contraseña otra vez', confirmPasswordReq:'Confirma tu contraseña.', passwordMismatch:'Las contraseñas no coinciden.'
+  },
+  nl: {
+    login:'Inloggen', logout:'Uitloggen', myDashboard:'Mijn dashboard', registerKitchen:'Keuken registreren',
+    welcomeTitle:'Welkom terug bij je keuken', welcomeText:'Log in om je menu, foto’s, prijzen, zichtbaarheid en tools bij te werken.',
+    featureDashboardTitle:'Dashboard', featureDashboardText:'Ga direct terug naar je keukenwerkruimte.',
+    featureMenuTitle:'Menu en foto’s', featureMenuText:'Wijzigingen worden opgeslagen in PostgreSQL.',
+    featureVisibilityTitle:'Zichtbaarheid', featureVisibilityText:'Houd je Explore-vermelding actueel.',
+    ownerLogin:'Login voor keukeneigenaren', loginDashboard:'Inloggen op dashboard', loginHelp:'Gebruik het e-mailadres en wachtwoord waarmee je je keuken registreerde.',
+    email:'E-mail', password:'Wachtwoord', loggingIn:'Inloggen…', exploreKitchens:'Keukens bekijken', forgotPassword:'Wachtwoord vergeten?',
+    resetInfo:'Wachtwoord resetten per e-mail wordt geactiveerd zodra e-mail is geconfigureerd. Voorlopig moet dit handmatig in test/staging.',
+    noKitchen:'Nog geen keuken?', registerHelp:'Registreer een nieuwe keuken en kom later terug om in te loggen.', registerNewKitchen:'Nieuwe keuken registreren',
+    confirmPassword:'Bevestig wachtwoord', confirmPasswordPh:'Typ het wachtwoord opnieuw', confirmPasswordReq:'Bevestig je wachtwoord.', passwordMismatch:'De wachtwoorden komen niet overeen.'
+  },
+  de: {
+    login:'Einloggen', logout:'Ausloggen', myDashboard:'Mein Dashboard', registerKitchen:'Küche registrieren',
+    welcomeTitle:'Willkommen zurück in deiner Küche', welcomeText:'Logge dich ein, um Menü, Fotos, Preise, Sichtbarkeit und Tools zu aktualisieren.',
+    featureDashboardTitle:'Dashboard', featureDashboardText:'Direkt zurück zu deinem Küchenbereich.',
+    featureMenuTitle:'Menü und Fotos', featureMenuText:'Änderungen werden in PostgreSQL gespeichert.',
+    featureVisibilityTitle:'Sichtbarkeit', featureVisibilityText:'Halte deinen Explore-Eintrag aktuell.',
+    ownerLogin:'Login für Küchenbetreiber', loginDashboard:'Ins Dashboard einloggen', loginHelp:'Nutze die E-Mail und das Passwort, mit denen du deine Küche registriert hast.',
+    email:'E-Mail', password:'Passwort', loggingIn:'Einloggen…', exploreKitchens:'Küchen ansehen', forgotPassword:'Passwort vergessen?',
+    resetInfo:'Passwort-Zurücksetzung per E-Mail wird aktiviert, sobald E-Mail-Versand eingerichtet ist. Bis dahin muss dies in test/staging manuell erfolgen.',
+    noKitchen:'Noch keine Küche?', registerHelp:'Registriere eine neue Küche und kehre später zum Einloggen zurück.', registerNewKitchen:'Neue Küche registrieren',
+    confirmPassword:'Passwort bestätigen', confirmPasswordPh:'Passwort erneut eingeben', confirmPasswordReq:'Passwort bestätigen.', passwordMismatch:'Die Passwörter stimmen nicht überein.'
+  },
+  fi: {
+    login:'Kirjaudu sisään', logout:'Kirjaudu ulos', myDashboard:'Oma hallintapaneeli', registerKitchen:'Rekisteröi keittiö',
+    welcomeTitle:'Tervetuloa takaisin keittiöösi', welcomeText:'Kirjaudu päivittämään menu, kuvat, hinnat, näkyvyys ja työkalut.',
+    featureDashboardTitle:'Hallintapaneeli', featureDashboardText:'Palaa suoraan keittiösi työtilaan.',
+    featureMenuTitle:'Menu ja kuvat', featureMenuText:'Muutokset tallennetaan PostgreSQL:ään.',
+    featureVisibilityTitle:'Näkyvyys', featureVisibilityText:'Pidä Explore-listaus ajan tasalla.',
+    ownerLogin:'Keittiön omistajan kirjautuminen', loginDashboard:'Kirjaudu hallintapaneeliin', loginHelp:'Käytä sähköpostia ja salasanaa, joilla rekisteröit keittiösi.',
+    email:'Sähköposti', password:'Salasana', loggingIn:'Kirjaudutaan…', exploreKitchens:'Selaa keittiöitä', forgotPassword:'Unohditko salasanan?',
+    resetInfo:'Salasanan palautus sähköpostilla aktivoidaan, kun sähköpostilähetys on määritetty. Toistaiseksi tämä hoidetaan manuaalisesti test/staging-ympäristössä.',
+    noKitchen:'Ei vielä keittiötä?', registerHelp:'Rekisteröi uusi keittiö ja palaa myöhemmin kirjautumaan.', registerNewKitchen:'Rekisteröi uusi keittiö',
+    confirmPassword:'Vahvista salasana', confirmPasswordPh:'Kirjoita salasana uudelleen', confirmPasswordReq:'Vahvista salasana.', passwordMismatch:'Salasanat eivät täsmää.'
+  },
+  pt: {
+    login:'Entrar', logout:'Sair', myDashboard:'O meu painel', registerKitchen:'Registar cozinha',
+    welcomeTitle:'Bem-vindo de volta à sua cozinha', welcomeText:'Entre para atualizar menu, fotos, preços, visibilidade e ferramentas.',
+    featureDashboardTitle:'Painel', featureDashboardText:'Volte diretamente ao espaço da sua cozinha.',
+    featureMenuTitle:'Menu e fotos', featureMenuText:'As alterações são guardadas em PostgreSQL.',
+    featureVisibilityTitle:'Visibilidade', featureVisibilityText:'Mantenha a sua listagem Explore atualizada.',
+    ownerLogin:'Login do proprietário da cozinha', loginDashboard:'Entrar no painel', loginHelp:'Use o e-mail e a palavra-passe usados no registo da cozinha.',
+    email:'E-mail', password:'Palavra-passe', loggingIn:'A entrar…', exploreKitchens:'Ver cozinhas', forgotPassword:'Esqueceu a palavra-passe?',
+    resetInfo:'A reposição de palavra-passe por e-mail será ativada quando o envio de e-mail estiver configurado. Por agora, isto deve ser tratado manualmente em test/staging.',
+    noKitchen:'Ainda não tem cozinha?', registerHelp:'Registe uma nova cozinha e volte aqui mais tarde para entrar.', registerNewKitchen:'Registar nova cozinha',
+    confirmPassword:'Confirmar palavra-passe', confirmPasswordPh:'Escreva a palavra-passe novamente', confirmPasswordReq:'Confirme a palavra-passe.', passwordMismatch:'As palavras-passe não coincidem.'
+  },
+  fr: {
+    login:'Connexion', logout:'Déconnexion', myDashboard:'Mon tableau de bord', registerKitchen:'Inscrire une cuisine',
+    welcomeTitle:'Bienvenue dans votre cuisine', welcomeText:'Connectez-vous pour mettre à jour menu, photos, prix, visibilité et outils.',
+    featureDashboardTitle:'Tableau de bord', featureDashboardText:'Retournez directement à votre espace cuisine.',
+    featureMenuTitle:'Menu et photos', featureMenuText:'Les modifications sont enregistrées dans PostgreSQL.',
+    featureVisibilityTitle:'Visibilité', featureVisibilityText:'Gardez votre fiche Explore à jour.',
+    ownerLogin:'Connexion propriétaire', loginDashboard:'Connexion au tableau de bord', loginHelp:'Utilisez l’e-mail et le mot de passe utilisés lors de l’inscription.',
+    email:'E-mail', password:'Mot de passe', loggingIn:'Connexion…', exploreKitchens:'Voir les cuisines', forgotPassword:'Mot de passe oublié ?',
+    resetInfo:'La réinitialisation du mot de passe par e-mail sera activée lorsque l’envoi d’e-mails sera configuré. Pour l’instant, cela doit être géré manuellement en test/staging.',
+    noKitchen:'Pas encore de cuisine ?', registerHelp:'Inscrivez une nouvelle cuisine puis revenez ici pour vous connecter.', registerNewKitchen:'Inscrire une nouvelle cuisine',
+    confirmPassword:'Confirmer le mot de passe', confirmPasswordPh:'Saisissez à nouveau le mot de passe', confirmPasswordReq:'Confirmez le mot de passe.', passwordMismatch:'Les mots de passe ne correspondent pas.'
+  },
+  th: {
+    login:'เข้าสู่ระบบ', logout:'ออกจากระบบ', myDashboard:'แดชบอร์ดของฉัน', registerKitchen:'ลงทะเบียนครัว',
+    welcomeTitle:'ยินดีต้อนรับกลับสู่ครัวของคุณ', welcomeText:'เข้าสู่ระบบเพื่ออัปเดตเมนู รูปภาพ ราคา การมองเห็น และเครื่องมือของเจ้าของร้าน',
+    featureDashboardTitle:'แดชบอร์ด', featureDashboardText:'กลับไปยังพื้นที่จัดการครัวของคุณได้โดยตรง',
+    featureMenuTitle:'เมนูและรูปภาพ', featureMenuText:'การเปลี่ยนแปลงจะถูกบันทึกใน PostgreSQL',
+    featureVisibilityTitle:'การมองเห็น', featureVisibilityText:'อัปเดตรายการ Explore ของคุณให้เป็นปัจจุบัน',
+    ownerLogin:'เข้าสู่ระบบสำหรับเจ้าของครัว', loginDashboard:'เข้าสู่แดชบอร์ด', loginHelp:'ใช้อีเมลและรหัสผ่านที่ใช้ลงทะเบียนครัวของคุณ',
+    email:'อีเมล', password:'รหัสผ่าน', loggingIn:'กำลังเข้าสู่ระบบ…', exploreKitchens:'ดูครัว', forgotPassword:'ลืมรหัสผ่าน?',
+    resetInfo:'การรีเซ็ตรหัสผ่านทางอีเมลจะเปิดใช้เมื่อมีการตั้งค่าระบบอีเมลแล้ว ตอนนี้ต้องจัดการด้วยตนเองใน test/staging',
+    noKitchen:'ยังไม่มีครัว?', registerHelp:'ลงทะเบียนครัวใหม่ แล้วกลับมาที่นี่ภายหลังเพื่อเข้าสู่ระบบ', registerNewKitchen:'ลงทะเบียนครัวใหม่',
+    confirmPassword:'ยืนยันรหัสผ่าน', confirmPasswordPh:'พิมพ์รหัสผ่านอีกครั้ง', confirmPasswordReq:'ยืนยันรหัสผ่าน', passwordMismatch:'รหัสผ่านไม่ตรงกัน'
+  },
+  tl: {
+    login:'Mag-log in', logout:'Mag-log out', myDashboard:'Aking dashboard', registerKitchen:'Irehistro ang kusina',
+    welcomeTitle:'Maligayang pagbabalik sa iyong kusina', welcomeText:'Mag-log in para i-update ang menu, mga larawan, presyo, visibility at owner tools.',
+    featureDashboardTitle:'Dashboard', featureDashboardText:'Bumalik diretso sa workspace ng iyong kusina.',
+    featureMenuTitle:'Menu at mga larawan', featureMenuText:'Ang mga pagbabago ay naka-store sa PostgreSQL.',
+    featureVisibilityTitle:'Visibility', featureVisibilityText:'Panatilihing updated ang iyong Explore listing.',
+    ownerLogin:'Login ng kitchen owner', loginDashboard:'Mag-log in sa dashboard', loginHelp:'Gamitin ang email at password na ginamit mo sa pagrehistro ng kusina.',
+    email:'Email', password:'Password', loggingIn:'Nagla-log in…', exploreKitchens:'Tingnan ang mga kusina', forgotPassword:'Nakalimutan ang password?',
+    resetInfo:'Ang password reset sa email ay ia-activate kapag naka-configure na ang email delivery. Sa ngayon, mano-mano muna ito sa test/staging.',
+    noKitchen:'Wala pang kusina?', registerHelp:'Magrehistro ng bagong kusina at bumalik dito mamaya para mag-log in.', registerNewKitchen:'Magrehistro ng bagong kusina',
+    confirmPassword:'Kumpirmahin ang password', confirmPasswordPh:'I-type muli ang password', confirmPasswordReq:'Kumpirmahin ang password.', passwordMismatch:'Hindi magkapareho ang password.'
+  },
+  vi: {
+    login:'Đăng nhập', logout:'Đăng xuất', myDashboard:'Bảng điều khiển của tôi', registerKitchen:'Đăng ký bếp',
+    welcomeTitle:'Chào mừng trở lại bếp của bạn', welcomeText:'Đăng nhập để cập nhật thực đơn, hình ảnh, giá, hiển thị và công cụ chủ bếp.',
+    featureDashboardTitle:'Bảng điều khiển', featureDashboardText:'Quay lại trực tiếp không gian quản lý bếp.',
+    featureMenuTitle:'Thực đơn và hình ảnh', featureMenuText:'Các thay đổi được lưu trong PostgreSQL.',
+    featureVisibilityTitle:'Hiển thị', featureVisibilityText:'Giữ listing Explore luôn cập nhật.',
+    ownerLogin:'Đăng nhập chủ bếp', loginDashboard:'Đăng nhập vào bảng điều khiển', loginHelp:'Dùng email và mật khẩu đã dùng khi đăng ký bếp.',
+    email:'Email', password:'Mật khẩu', loggingIn:'Đang đăng nhập…', exploreKitchens:'Xem các bếp', forgotPassword:'Quên mật khẩu?',
+    resetInfo:'Đặt lại mật khẩu qua email sẽ được bật khi cấu hình gửi email hoàn tất. Hiện tại việc này cần xử lý thủ công trong test/staging.',
+    noKitchen:'Chưa có bếp?', registerHelp:'Đăng ký bếp mới rồi quay lại đây sau để đăng nhập.', registerNewKitchen:'Đăng ký bếp mới',
+    confirmPassword:'Xác nhận mật khẩu', confirmPasswordPh:'Nhập lại mật khẩu', confirmPasswordReq:'Xác nhận mật khẩu.', passwordMismatch:'Mật khẩu không khớp.'
+  },
+  zh: {
+    login:'登录', logout:'退出登录', myDashboard:'我的控制台', registerKitchen:'注册厨房',
+    welcomeTitle:'欢迎回到你的厨房', welcomeText:'登录以更新菜单、照片、价格、可见性和经营工具。',
+    featureDashboardTitle:'控制台', featureDashboardText:'直接返回你的厨房工作区。',
+    featureMenuTitle:'菜单和照片', featureMenuText:'更改会保存到 PostgreSQL。',
+    featureVisibilityTitle:'可见性', featureVisibilityText:'保持你的 Explore 页面为最新状态。',
+    ownerLogin:'厨房经营者登录', loginDashboard:'登录控制台', loginHelp:'使用注册厨房时的邮箱和密码。',
+    email:'电子邮箱', password:'密码', loggingIn:'正在登录…', exploreKitchens:'浏览厨房', forgotPassword:'忘记密码？',
+    resetInfo:'通过电子邮件重置密码会在邮件发送功能配置后启用。目前在 test/staging 中需手动处理。',
+    noKitchen:'还没有厨房？', registerHelp:'注册一个新厨房，稍后回到这里登录。', registerNewKitchen:'注册新厨房',
+    confirmPassword:'确认密码', confirmPasswordPh:'再次输入密码', confirmPasswordReq:'请确认密码。', passwordMismatch:'两次输入的密码不一致。'
+  },
+  id: {
+    login:'Masuk', logout:'Keluar', myDashboard:'Dashboard saya', registerKitchen:'Daftarkan dapur',
+    welcomeTitle:'Selamat datang kembali di dapur Anda', welcomeText:'Masuk untuk memperbarui menu, foto, harga, visibilitas, dan alat pemilik.',
+    featureDashboardTitle:'Dashboard', featureDashboardText:'Kembali langsung ke ruang kerja dapur Anda.',
+    featureMenuTitle:'Menu dan foto', featureMenuText:'Perubahan disimpan di PostgreSQL.',
+    featureVisibilityTitle:'Visibilitas', featureVisibilityText:'Jaga listing Explore tetap terbaru.',
+    ownerLogin:'Login pemilik dapur', loginDashboard:'Masuk ke dashboard', loginHelp:'Gunakan email dan kata sandi yang dipakai saat mendaftarkan dapur.',
+    email:'Email', password:'Kata sandi', loggingIn:'Sedang masuk…', exploreKitchens:'Lihat dapur', forgotPassword:'Lupa kata sandi?',
+    resetInfo:'Reset kata sandi melalui email akan diaktifkan saat pengiriman email sudah dikonfigurasi. Untuk sekarang harus ditangani manual di test/staging.',
+    noKitchen:'Belum punya dapur?', registerHelp:'Daftarkan dapur baru dan kembali ke sini nanti untuk masuk.', registerNewKitchen:'Daftarkan dapur baru',
+    confirmPassword:'Konfirmasi kata sandi', confirmPasswordPh:'Ketik kata sandi sekali lagi', confirmPasswordReq:'Konfirmasi kata sandi.', passwordMismatch:'Kata sandi tidak cocok.'
+  },
+  ko: {
+    login:'로그인', logout:'로그아웃', myDashboard:'내 대시보드', registerKitchen:'키친 등록',
+    welcomeTitle:'내 키친으로 돌아오신 것을 환영합니다', welcomeText:'로그인하여 메뉴, 사진, 가격, 노출 및 운영 도구를 업데이트하세요.',
+    featureDashboardTitle:'대시보드', featureDashboardText:'내 키친 작업 공간으로 바로 돌아갑니다.',
+    featureMenuTitle:'메뉴 및 사진', featureMenuText:'변경 사항은 PostgreSQL에 저장됩니다.',
+    featureVisibilityTitle:'노출', featureVisibilityText:'Explore 목록을 최신 상태로 유지하세요.',
+    ownerLogin:'키친 운영자 로그인', loginDashboard:'대시보드 로그인', loginHelp:'키친을 등록할 때 사용한 이메일과 비밀번호를 입력하세요.',
+    email:'이메일', password:'비밀번호', loggingIn:'로그인 중…', exploreKitchens:'키친 보기', forgotPassword:'비밀번호를 잊으셨나요?',
+    resetInfo:'이메일 비밀번호 재설정은 이메일 발송 설정 후 활성화됩니다. 지금은 test/staging에서 수동으로 처리해야 합니다.',
+    noKitchen:'아직 키친이 없나요?', registerHelp:'새 키친을 등록한 후 나중에 여기에서 로그인하세요.', registerNewKitchen:'새 키친 등록',
+    confirmPassword:'비밀번호 확인', confirmPasswordPh:'비밀번호를 한 번 더 입력하세요', confirmPasswordReq:'비밀번호를 확인하세요.', passwordMismatch:'비밀번호가 일치하지 않습니다.'
+  }
+};
+function authT(key){
+  const lang = authCopy[state.lang] ? state.lang : 'en';
+  return (authCopy[lang] && authCopy[lang][key]) || authCopy.en[key] || key;
+}
+
 function assetUrl(p){
   if (!p) return '';
   // Normalize to a single leading slash: "assets/x.jpg" -> "/assets/x.jpg", "/assets/x.jpg" -> "/assets/x.jpg"
@@ -1838,9 +2038,9 @@ function topBar(){
         link('/', t('nav.explore')),
               ]),
       el('div', { class:'topbar-actions' }, [
-        ownerDashboardPath() ? button(state.lang==='no' ? 'Mitt dashboard' : 'My dashboard', { variant:'outline', onclick: ()=>navigate(ownerDashboardPath()), className:'ownerDashboardShortcut' }) : null,
-        !(location.pathname || '').startsWith('/login') ? button(state.lang==='no' ? 'Logg inn' : 'Log in', { variant:'outline', onclick: ()=>navigate('/login'), className:'ownerLoginBtn' }) : null,
-        button(state.lang==='no' ? 'Registrer kjøkken' : 'Register kitchen', { onclick: ()=>navigate('/list'), className:'registerKitchenBtn' }),
+        isOwnerLoggedIn() && ownerDashboardPath() ? button(authT('myDashboard'), { variant:'outline', onclick: ()=>navigate(ownerDashboardPath()), className:'ownerDashboardShortcut' }) : null,
+        state.auth && state.auth.authenticated ? button(authT('logout'), { variant:'outline', onclick: ownerLogout, className:'ownerLogoutBtn' }) : (!(location.pathname || '').startsWith('/login') ? button(authT('login'), { variant:'outline', onclick: ()=>navigate('/login'), className:'ownerLoginBtn' }) : null),
+        button(authT('registerKitchen'), { onclick: ()=>navigate('/list'), className:'registerKitchenBtn' }),
       ].filter(Boolean))
     ]),
     languageSelect('lang-mobile')
@@ -3519,7 +3719,7 @@ function pageCook(listing){
             el('div', { class:'muted' }, [`${listing.area} · ${listing.city}`]),
           ].filter(Boolean)),
           el('div', { class:'hide-mobile row', style:'gap:8px; flex-wrap:wrap' }, [
-            ownerDashboardPath() ? button(state.lang==='no' ? 'Mitt dashboard' : 'My dashboard', { variant:'outline', onclick: ()=>navigate(ownerDashboardPath()) }) : null,
+            ownerDashboardPath() ? button(authT('myDashboard'), { variant:'outline', onclick: ()=>navigate(ownerDashboardPath()) }) : null,
             button(t('ui.back'), { variant:'outline', onclick: ()=>history.back() })
           ].filter(Boolean))
         ]),
@@ -10566,8 +10766,8 @@ function pageList(){
     req(/^\S+@\S+\.\S+$/.test((a.email||'').trim()), 'email', listUiMsg(state.lang,'emailValid'), listUiMsg(state.lang,'emailValid'));
     req(!!(a.password||'').trim(), 'password', listUiMsg(state.lang,'passwordReq'), listUiMsg(state.lang,'passwordReq'));
     req(String(a.password||'').length >= 8, 'password', listUiMsg(state.lang,'passwordLen'), listUiMsg(state.lang,'passwordLen'));
-    req(!!(a.password_confirm||'').trim(), 'password_confirm', no ? 'Bekreft passordet.' : 'Confirm your password.', no ? 'Bekreft passordet.' : 'Confirm your password.');
-    req(String(a.password||'') === String(a.password_confirm||''), 'password_confirm', no ? 'Passordene er ikke like.' : 'Passwords do not match.', no ? 'Passordene er ikke like.' : 'Passwords do not match.');
+    req(!!(a.password_confirm||'').trim(), 'password_confirm', authT('confirmPasswordReq'), authT('confirmPasswordReq'));
+    req(String(a.password||'') === String(a.password_confirm||''), 'password_confirm', authT('passwordMismatch'), authT('passwordMismatch'));
     req(!!(a.country||'').trim(), 'country', listUiMsg(state.lang,'countryReq'), listUiMsg(state.lang,'countryReq'));
     req(!!(a.city||'').trim(), 'city', listUiMsg(state.lang,'cityReq'), listUiMsg(state.lang,'cityReq'));
     req(!!(a.kitchen_name||d.name||'').trim(), 'kitchen_name', listUiMsg(state.lang,'kitchenReq'), listUiMsg(state.lang,'kitchenReq'));
@@ -10730,7 +10930,7 @@ function pageList(){
           field(L.name, el('input',{class:inputCls('name'), value:a.name, placeholder:'Maria Santos', oninput:e=>setAccount('name', e.target.value)})),
           field(L.email, el('input',{class:inputCls('email'), value:a.email, placeholder:'you@email.com', oninput:e=>setAccount('email', e.target.value)})),
           field(L.password, el('input',{type:'password', class:inputCls('password'), value:a.password, placeholder:L.passwordPh, autocomplete:'new-password', oninput:e=>setAccount('password', e.target.value)})),
-          field(state.lang==='no' ? 'Bekreft passord' : 'Confirm password', el('input',{type:'password', class:inputCls('password_confirm'), value:a.password_confirm || '', placeholder:state.lang==='no' ? 'Skriv passordet én gang til' : 'Type the password again', autocomplete:'new-password', oninput:e=>setAccount('password_confirm', e.target.value)})),
+          field(authT('confirmPassword'), el('input',{type:'password', class:inputCls('password_confirm'), value:a.password_confirm || '', placeholder:authT('confirmPasswordPh'), autocomplete:'new-password', oninput:e=>setAccount('password_confirm', e.target.value)})),
           el('div',{class:'row', style:'gap:10px'},[
             el('div',{style:'flex:1'},[field(L.kitchenCountry, el('select',{class:inputCls('country'), value:currentCountry, onchange:e=>setAccount('country', e.target.value)}, RM24_MARKET_ORDER.map(code=>el('option',{value:code, selected: code === currentCountry},[marketNameLocalized(code, state.lang) + ' · ' + RM24_MARKETS[code].currency]))))]),
             el('div',{style:'flex:1'},[field(L.city, el('input',{class:inputCls('city'), value:a.city, placeholder:'Oslo', oninput:e=>setAccount('city', e.target.value)}))])
@@ -11029,9 +11229,11 @@ function getOwnerDashboardToken(){
 }
 
 function ownerDashboardPath(){
-  const od = state.auth && state.auth.owner_dashboard;
-  const tokenFromAuth = od && (od.preview_token || (od.path || '').split('/p/')[1]);
-  const token = tokenFromAuth || getOwnerDashboardToken();
+  // Dashboard shortcut should only be visible after a verified owner session.
+  // A saved local token alone is not treated as logged-in state.
+  if (!(state.auth && state.auth.authenticated && state.auth.owner_dashboard)) return '';
+  const od = state.auth.owner_dashboard;
+  const token = od && (od.preview_token || (od.path || '').split('/p/')[1]);
   return token ? ('/p/' + encodeURIComponent(token)) : '';
 }
 
@@ -11054,6 +11256,27 @@ async function refreshAuth(){
     state.auth.user = null;
     state.auth.owner_dashboard = null;
   }
+}
+
+function isOwnerLoggedIn(){
+  return !!(state.auth && state.auth.authenticated && state.auth.owner_dashboard);
+}
+
+async function ownerLogout(){
+  try { await apiJson('POST', '/api/auth/logout', {}); } catch(_) {}
+  state.auth.checked = true;
+  state.auth.authenticated = false;
+  state.auth.user = null;
+  state.auth.owner_dashboard = null;
+  state.auth.loginPassword = '';
+  state.auth.error = '';
+  try {
+    localStorage.removeItem('rm_owner_dashboard_token');
+    localStorage.removeItem('rm_owner_token');
+    localStorage.removeItem('rm_preview_token');
+  } catch(_) {}
+  if (state.ui) state.ui.ownerDashboardToken = '';
+  navigate('/login');
 }
 
 function navigate(path){
@@ -11225,9 +11448,7 @@ function pageLogin(){
       render();
     }
   }
-  const resetText = no
-    ? 'Tilbakestilling av passord via e-post kommer når e-postoppsettet er aktivert. Foreløpig må dette håndteres manuelt i test/staging.'
-    : 'Password reset by email will be activated when email delivery is configured. For now, reset must be handled manually in test/staging.';
+  const resetText = authT('resetInfo');
   return el('div', { class:'container section authPage' }, [
     el('div', { class:'authShell' }, [
       el('div', { class:'authIntro' }, [
@@ -11235,34 +11456,34 @@ function pageLogin(){
           el('span', { class:'brandDot' }, []),
           el('span', {}, ['RiceMap24'])
         ]),
-        el('h1', {}, [no ? 'Velkommen tilbake til kjøkkenet ditt' : 'Welcome back to your kitchen']),
-        el('p', {}, [no ? 'Logg inn for å oppdatere meny, bilder, priser, synlighet og verktøy.' : 'Log in to update your menu, photos, prices, visibility and owner tools.']),
+        el('h1', {}, [authT('welcomeTitle')]),
+        el('p', {}, [authT('welcomeText')]),
         el('div', { class:'authFeatureList' }, [
-          el('div', {}, [el('strong', {}, [no ? 'Dashboard' : 'Dashboard']), el('span', {}, [no ? 'Gå rett tilbake til kjøkkensiden din.' : 'Return directly to your kitchen workspace.'])]),
-          el('div', {}, [el('strong', {}, [no ? 'Meny og bilder' : 'Menu and photos']), el('span', {}, [no ? 'Endringer lagres i PostgreSQL.' : 'Changes are stored in PostgreSQL.'])]),
-          el('div', {}, [el('strong', {}, [no ? 'Synlighet' : 'Visibility']), el('span', {}, [no ? 'Hold Explore-siden oppdatert.' : 'Keep your Explore listing current.'])])
+          el('div', {}, [el('strong', {}, [authT('featureDashboardTitle')]), el('span', {}, [authT('featureDashboardText')])]),
+          el('div', {}, [el('strong', {}, [authT('featureMenuTitle')]), el('span', {}, [authT('featureMenuText')])]),
+          el('div', {}, [el('strong', {}, [authT('featureVisibilityTitle')]), el('span', {}, [authT('featureVisibilityText')])])
         ])
       ]),
       el('div', { class:'authCard' }, [
-        el('div', { class:'kicker' }, [no ? 'Aktørinnlogging' : 'Kitchen owner login']),
-        el('h2', {}, [no ? 'Logg inn på dashboard' : 'Log in to dashboard']),
-        el('p', { class:'muted' }, [no ? 'Bruk e-posten og passordet du registrerte kjøkkenet med.' : 'Use the email and password you used when registering your kitchen.']),
+        el('div', { class:'kicker' }, [authT('ownerLogin')]),
+        el('h2', {}, [authT('loginDashboard')]),
+        el('p', { class:'muted' }, [authT('loginHelp')]),
         state.auth.error ? el('div', { class:'notice warn authNotice' }, [state.auth.error]) : null,
         state.auth.resetInfo ? el('div', { class:'notice authNotice' }, [resetText]) : null,
-        field(no ? 'E-post' : 'Email', el('input', { class:'input authInput', type:'email', value:state.auth.loginEmail||'', autocomplete:'email', placeholder:'you@email.com', oninput:e=>{ state.auth.loginEmail = e.target.value; } })),
-        field(no ? 'Passord' : 'Password', el('input', { class:'input authInput', type:'password', value:state.auth.loginPassword||'', autocomplete:'current-password', placeholder:no ? 'Passord' : 'Password', oninput:e=>{ state.auth.loginPassword = e.target.value; }, onkeydown:e=>{ if(e.key==='Enter') doLogin(); } })),
+        field(authT('email'), el('input', { class:'input authInput', type:'email', value:state.auth.loginEmail||'', autocomplete:'email', placeholder:'you@email.com', oninput:e=>{ state.auth.loginEmail = e.target.value; } })),
+        field(authT('password'), el('input', { class:'input authInput', type:'password', value:state.auth.loginPassword||'', autocomplete:'current-password', placeholder:authT('password'), oninput:e=>{ state.auth.loginPassword = e.target.value; }, onkeydown:e=>{ if(e.key==='Enter') doLogin(); } })),
         el('div', { class:'authActions' }, [
-          button(state.auth.busy ? (no ? 'Logger inn…' : 'Logging in…') : (no ? 'Logg inn' : 'Log in'), { variant:'primary', onclick:doLogin, disabled:state.auth.busy }),
-          button(no ? 'Se kjøkken' : 'Explore kitchens', { variant:'outline', onclick:()=>navigate('/') })
+          button(state.auth.busy ? authT('loggingIn') : authT('login'), { variant:'primary', onclick:doLogin, disabled:state.auth.busy }),
+          button(authT('exploreKitchens'), { variant:'outline', onclick:()=>navigate('/') })
         ]),
-        el('button', { class:'linkBtn authForgot', onclick:()=>{ state.auth.resetInfo = !state.auth.resetInfo; render(); } }, [no ? 'Glemt passord?' : 'Forgot password?']),
+        el('button', { class:'linkBtn authForgot', onclick:()=>{ state.auth.resetInfo = !state.auth.resetInfo; render(); } }, [authT('forgotPassword')]),
         el('div', { class:'authDivider' }, []),
         el('div', { class:'authSignupBox' }, [
           el('div', {}, [
-            el('strong', {}, [no ? 'Har du ikke kjøkken ennå?' : 'No kitchen yet?']),
-            el('p', { class:'muted small' }, [no ? 'Registrer et nytt kjøkken og kom tilbake hit senere for innlogging.' : 'Register a new kitchen and return here later to log in.'])
+            el('strong', {}, [authT('noKitchen')]),
+            el('p', { class:'muted small' }, [authT('registerHelp')])
           ]),
-          button(no ? 'Registrer nytt kjøkken' : 'Register a new kitchen', { variant:'outline', onclick:()=>navigate('/list') })
+          button(authT('registerNewKitchen'), { variant:'outline', onclick:()=>navigate('/list') })
         ])
       ].filter(Boolean))
     ])
