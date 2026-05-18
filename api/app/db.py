@@ -8,6 +8,7 @@ import secrets
 import hashlib
 import hmac
 import time
+import uuid
 from datetime import datetime, date, timedelta
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -2865,6 +2866,88 @@ def upsert_listing(
     data_json = json.dumps(listing, ensure_ascii=False)
     conn.execute("UPDATE listings SET customer_no=?, data_json=?, updated_at=datetime('now') WHERE id=?", (customer_no_val, data_json, new_id))
     return new_id, slug
+
+
+def soft_delete_listing_by_owner(listing_id: int) -> Dict[str, Any]:
+    """Soft-delete/anonymize an owner listing from the public app.
+
+    This hides the kitchen immediately, disables owner login, and removes
+    customer-facing profile/menu/contact data from the listing row. It keeps a
+    minimal technical record for audit/admin consistency.
+    """
+    conn = connect()
+    try:
+        row = conn.execute("SELECT * FROM listings WHERE id=?", (int(listing_id),)).fetchone()
+        if not row:
+            raise KeyError("not found")
+        listing = row_to_listing(row)
+        old_slug = str(listing.get("slug") or ("deleted-" + str(listing_id)))
+        deleted_listing = {
+            "slug": old_slug,
+            "name": "Deleted kitchen",
+            "area": "",
+            "city": "",
+            "country": listing.get("country") or "",
+            "postcode": "",
+            "cuisines": [],
+            "badges": [],
+            "from_price": None,
+            "currency": listing.get("currency") or "NOK",
+            "hero_image": "",
+            "is_demo": bool(listing.get("is_demo", False)),
+            "listing_type": listing.get("listing_type") or "real",
+            "accepts_orders": False,
+            "show_in_actor_marketing": False,
+            "show_in_customer_marketplace": False,
+            "lat": None,
+            "lng": None,
+            "menu": [],
+            "contact": {},
+            "intro": {"en":"", "no":""},
+            "pickup_note": {"en":"", "no":""},
+            "delivery_note": {"en":"", "no":""},
+            "payment_note": {"en":"", "no":""},
+            "availability": {"en":{"deadline":"", "window":""}, "no":{"deadline":"", "window":""}},
+            "deleted_by_request_at": conn.execute("SELECT datetime('now') as t").fetchone()["t"],
+        }
+        upsert_listing(
+            conn,
+            deleted_listing,
+            published=0,
+            plan=listing.get("plan", "basic"),
+            billing=listing.get("billing", "monthly"),
+            plan_active=0,
+            account_status="deleted_by_request",
+            preview_token=listing.get("preview_token"),
+            pending_activation=0,
+            requested_at=listing.get("requested_at"),
+            activated_at=listing.get("activated_at"),
+            admin_note=(str(listing.get("admin_note") or "") + "\nOwner requested deletion.").strip(),
+            paid_status=listing.get("paid_status", "unpaid"),
+            paid_until=listing.get("paid_until"),
+            last_payment_at=listing.get("last_payment_at"),
+            stripe_customer_id=listing.get("stripe_customer_id"),
+            stripe_subscription_id=listing.get("stripe_subscription_id"),
+            stripe_checkout_session_id=listing.get("stripe_checkout_session_id"),
+            stripe_status=listing.get("stripe_status"),
+            stripe_price_id=listing.get("stripe_price_id"),
+            stripe_current_period_end=listing.get("stripe_current_period_end"),
+            stripe_last_event_at=listing.get("stripe_last_event_at"),
+        )
+        users = conn.execute("SELECT id FROM app_users WHERE listing_id=?", (int(listing_id),)).fetchall()
+        user_ids = [int(u["id"]) for u in users]
+        deleted_email = f"deleted-{int(listing_id)}-{uuid.uuid4().hex[:10]}@deleted.local"
+        conn.execute(
+            "UPDATE app_users SET email=?, password_hash=NULL, display_name='', active=0, updated_at=datetime('now') WHERE listing_id=?",
+            (deleted_email, int(listing_id)),
+        )
+        for uid in user_ids:
+            conn.execute("UPDATE app_sessions SET revoked_at=datetime('now'), updated_at=datetime('now') WHERE user_id=? AND revoked_at IS NULL", (uid,))
+        conn.commit()
+        fresh = conn.execute("SELECT * FROM listings WHERE id=?", (int(listing_id),)).fetchone()
+        return row_to_listing(fresh) if fresh else deleted_listing
+    finally:
+        conn.close()
 
 def list_listings(
     q: Optional[str] = None,

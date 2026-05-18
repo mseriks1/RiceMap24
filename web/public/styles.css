@@ -5646,3 +5646,12 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:12px 0;}
   .authIntro,.authCard{border-radius:26px; padding:24px;}
   .authSignupBox{align-items:flex-start; flex-direction:column;}
 }
+
+/* Step 9.54: owner visibility/delete controls */
+.accountControlGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.accountControlPanel{border:1px solid rgba(15,70,42,.14);background:rgba(255,255,255,.72);border-radius:22px;padding:18px}
+.accountControlPanel.dangerZone{border-color:rgba(160,55,55,.24);background:rgba(255,248,246,.82)}
+.dangerText{color:#9f2d2d}
+.dangerOutlineBtn{border-color:rgba(160,55,55,.42)!important;color:#8f2424!important;background:#fffafa!important}
+.dangerOutlineBtn:hover{background:#fff1f1!important}
+@media(max-width:760px){.accountControlGrid{grid-template-columns:1fr}.accountControlPanel{padding:16px}}

@@ -67,6 +67,7 @@ from .db import (
     stripe_mark_subscription_active,
     stripe_mark_inactive_by_subscription,
     set_listing_publication,
+    soft_delete_listing_by_owner,
     list_customers,
     create_customer,
     update_customer,
@@ -8248,6 +8249,31 @@ async def owner_save_listing(token: str, payload: dict):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"ok": True}
+
+
+
+
+@app.post("/api/owner/{token}/delete")
+async def owner_delete_listing_account(token: str, payload: dict, session_token: Optional[str] = Cookie(default=None, alias=SESSION_COOKIE_NAME)):
+    """Owner-requested soft deletion. Requires explicit DELETE confirmation."""
+    listing = _resolve_owner_listing(token)
+    confirm = str((payload or {}).get("confirm") or "").strip()
+    if confirm != "DELETE":
+        raise HTTPException(status_code=400, detail="Type DELETE to confirm deletion")
+    try:
+        deleted = soft_delete_listing_by_owner(int(listing["id"]))
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    response = JSONResponse({"ok": True, "deleted": True, "listing": deleted})
+    try:
+        if session_token:
+            revoke_app_session(session_token)
+        response.delete_cookie(SESSION_COOKIE_NAME, path="/")
+    except Exception:
+        pass
+    return response
 
 
 @app.post("/api/owner/{token}/publish")

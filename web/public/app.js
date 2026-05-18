@@ -4729,6 +4729,45 @@ const Y = {
       }
     }
 
+    async function deleteKitchenAccount(){
+      const no = state.lang === 'no';
+      const first = confirm(no
+        ? 'Dette er permanent. Vil du gå videre til bekreftelse for sletting av kjøkkenet ditt?'
+        : 'This is permanent. Do you want to continue to deletion confirmation for your kitchen?');
+      if (!first) return;
+      const typed = prompt(no
+        ? 'Skriv DELETE for å bekrefte permanent sletting. Kjøkkenet skjules, innlogging deaktiveres, og kundesiden fjernes fra RiceMap24.'
+        : 'Type DELETE to confirm permanent deletion. Your kitchen will be hidden, login will be disabled, and the customer page will be removed from RiceMap24.');
+      if (typed !== 'DELETE') {
+        alert(no ? 'Sletting ble avbrutt.' : 'Deletion cancelled.');
+        return;
+      }
+      o.savingListing = true;
+      o.saveError = '';
+      o.saveNotice = no ? 'Sletter kjøkken…' : 'Deleting kitchen…';
+      render();
+      try{
+        await apiJson('POST', `/api/owner/${encodeURIComponent(dlToken)}/delete`, { confirm:'DELETE' });
+        try {
+          localStorage.removeItem('rm_owner_dashboard_token');
+          localStorage.removeItem('rm_owner_token');
+          localStorage.removeItem('rm_preview_token');
+        } catch(_) {}
+        state.auth.authenticated = false;
+        state.auth.user = null;
+        state.auth.owner_dashboard = null;
+        state.currentListing = null;
+        await refreshListingCollections();
+        alert(no ? 'Kjøkkenet er slettet/skjult fra RiceMap24.' : 'Your kitchen has been deleted/hidden from RiceMap24.');
+        navigate('/login');
+      }catch(e){
+        o.saveError = e?.message || String(e);
+        o.saveNotice = '';
+        o.savingListing = false;
+        render();
+      }
+    }
+
     async function uploadFor(kind, dishIndex, file){
       if (!file) return;
       const MAX_UPLOAD_MB = 10;
@@ -7121,6 +7160,42 @@ const Y = {
       ].filter(Boolean));
     }
 
+    function accountControlCard(){
+      const no = state.lang === 'no';
+      const ownerState = _ensureOwnerState(token);
+      const isLive = !!Number(listing?.published || 0);
+      const isPaid = !!Number(listing?.plan_active || 0);
+      return infoCard(no ? 'Synlighet og konto' : 'Visibility and account', [
+        el('div', { class:'accountControlGrid' }, [
+          el('div', { class:'accountControlPanel' }, [
+            el('div', { class:'dashGrowthLabel' }, [no ? 'Synlighet' : 'Visibility']),
+            el('div', { class:'dashGrowthTitle' }, [isLive ? (no ? 'Kjøkkenet er synlig' : 'Kitchen is visible') : (no ? 'Kjøkkenet er skjult' : 'Kitchen is hidden')]),
+            el('div', { class:'muted small' }, [isLive
+              ? (no ? 'Kjøkkenet vises i Explore og kan åpnes av kunder.' : 'Your kitchen appears in Explore and can be opened by customers.')
+              : (no ? 'Kjøkkenet er ikke synlig for kunder. Meny, bilder og innstillinger er lagret.' : 'Your kitchen is not visible to customers. Menu, photos and settings are saved.')
+            ]),
+            el('div', { class:'row', style:'gap:10px; margin-top:12px; flex-wrap:wrap' }, [
+              isLive
+                ? button(no ? 'Skjul kjøkken' : 'Hide kitchen', { variant:'outline', onclick:()=>setPublication(false), disabled:ownerState.savingListing })
+                : button(no ? 'Gjør synlig igjen' : 'Make visible again', { variant:'primary', onclick:()=>setPublication(true), disabled:ownerState.savingListing || !isPaid }),
+              !isPaid ? el('span', { class:'muted small' }, [no ? 'Abonnement må være aktivt før siden kan publiseres.' : 'Subscription must be active before the page can be published.']) : null
+            ].filter(Boolean))
+          ]),
+          el('div', { class:'accountControlPanel dangerZone' }, [
+            el('div', { class:'dashGrowthLabel dangerText' }, [no ? 'Fareområde' : 'Danger zone']),
+            el('div', { class:'dashGrowthTitle' }, [no ? 'Slett kjøkken/konto' : 'Delete kitchen/account']),
+            el('div', { class:'muted small' }, [no
+              ? 'Bruk skjuling hvis du bare vil ta en pause. Sletting er permanent og krever ekstra bekreftelse.'
+              : 'Use hiding if you only need a break. Deletion is permanent and requires extra confirmation.'
+            ]),
+            el('div', { class:'row', style:'gap:10px; margin-top:12px; flex-wrap:wrap' }, [
+              button(no ? 'Slett permanent' : 'Delete permanently', { variant:'outline', className:'dangerOutlineBtn', onclick:deleteKitchenAccount, disabled:ownerState.savingListing })
+            ])
+          ])
+        ])
+      ]);
+    }
+
     if (mode === 'dashboard'){
       return el('div', { class:'container section narrow ownerDashboardHome ownerDashboardOverview' }, [
         dashboardHeroCard(),
@@ -7139,6 +7214,7 @@ const Y = {
         ]),
         nextActionsCard(),
         launchControlCard(),
+        accountControlCard(),
         growthToolsCard(),
         el('div', { id:'sec-referral-details', class:'dashReferralDetails dashReferralDetailsOpen' }, [
           referralDashboardCard()
