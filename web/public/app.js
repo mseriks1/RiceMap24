@@ -4744,7 +4744,7 @@ const Y = {
       }
       o.savingListing = true;
       o.saveError = '';
-      o.saveNotice = no ? 'Sletter kjøkken…' : 'Deleting kitchen…';
+      o.saveNotice = no ? 'Planlegger sletting og skjuler kjøkken…' : 'Scheduling deletion and hiding kitchen…';
       render();
       try{
         await apiJson('POST', `/api/owner/${encodeURIComponent(dlToken)}/delete`, { confirm:'DELETE' });
@@ -4758,7 +4758,7 @@ const Y = {
         state.auth.owner_dashboard = null;
         state.currentListing = null;
         await refreshListingCollections();
-        alert(no ? 'Kjøkkenet er slettet/skjult fra RiceMap24.' : 'Your kitchen has been deleted/hidden from RiceMap24.');
+        alert(no ? 'Kjøkkenet er skjult og satt til planlagt sletting. Admin kan gjenopprette det innen 90 dager.' : 'Your kitchen is hidden and scheduled for deletion. Admin can restore it within 90 days.');
         navigate('/login');
       }catch(e){
         o.saveError = e?.message || String(e);

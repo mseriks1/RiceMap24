@@ -2903,29 +2903,20 @@ def soft_delete_listing_by_owner(listing_id: int) -> Dict[str, Any]:
         listing["account_status"] = "deleted_by_request"
         listing = _apply_billing_visibility(listing)
 
-        upsert_listing(
-            conn,
-            listing,
-            published=0,
-            plan=listing.get("plan", "basic"),
-            billing=listing.get("billing", "monthly"),
-            plan_active=0,
-            account_status="deleted_by_request",
-            preview_token=listing.get("preview_token"),
-            pending_activation=0,
-            requested_at=listing.get("requested_at"),
-            activated_at=listing.get("activated_at"),
-            admin_note=listing.get("admin_note", ""),
-            paid_status=listing.get("paid_status", "unpaid"),
-            paid_until=listing.get("paid_until"),
-            last_payment_at=listing.get("last_payment_at"),
-            stripe_customer_id=listing.get("stripe_customer_id"),
-            stripe_subscription_id=listing.get("stripe_subscription_id"),
-            stripe_checkout_session_id=listing.get("stripe_checkout_session_id"),
-            stripe_status=listing.get("stripe_status"),
-            stripe_price_id=listing.get("stripe_price_id"),
-            stripe_current_period_end=listing.get("stripe_current_period_end"),
-            stripe_last_event_at=listing.get("stripe_last_event_at"),
+        # Direct UPDATE by id is safer than upsert here: deletion must always
+        # affect the exact owner listing, even if slugs or cached JSON differ.
+        data_json = json.dumps(listing, ensure_ascii=False)
+        conn.execute(
+            """UPDATE listings
+               SET published=0,
+                   plan_active=0,
+                   pending_activation=0,
+                   account_status='deleted_by_request',
+                   admin_note=?,
+                   data_json=?,
+                   updated_at=datetime('now')
+               WHERE id=?""",
+            (listing.get("admin_note", ""), data_json, int(listing_id)),
         )
 
         users = conn.execute("SELECT id FROM app_users WHERE listing_id=?", (int(listing_id),)).fetchall()
