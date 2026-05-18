@@ -1839,8 +1839,8 @@ function topBar(){
               ]),
       el('div', { class:'topbar-actions' }, [
         ownerDashboardPath() ? button(state.lang==='no' ? 'Mitt dashboard' : 'My dashboard', { variant:'outline', onclick: ()=>navigate(ownerDashboardPath()), className:'ownerDashboardShortcut' }) : null,
-        (!ownerDashboardPath() && !(location.pathname || '').startsWith('/login')) ? button(state.lang==='no' ? 'Logg inn' : 'Log in', { variant:'outline', onclick: ()=>navigate('/login'), className:'ownerLoginBtn' }) : null,
-        button(t('nav.list'), { onclick: ()=>navigate('/list'), className:'registerKitchenBtn' }),
+        !(location.pathname || '').startsWith('/login') ? button(state.lang==='no' ? 'Logg inn' : 'Log in', { variant:'outline', onclick: ()=>navigate('/login'), className:'ownerLoginBtn' }) : null,
+        button(state.lang==='no' ? 'Registrer kjøkken' : 'Register kitchen', { onclick: ()=>navigate('/list'), className:'registerKitchenBtn' }),
       ].filter(Boolean))
     ]),
     languageSelect('lang-mobile')
@@ -11232,7 +11232,8 @@ function pageLogin(){
         button(state.auth.busy ? (no ? 'Logger inn…' : 'Logging in…') : (no ? 'Logg inn' : 'Log in'), { variant:'primary', onclick:doLogin, disabled:state.auth.busy }),
         button(no ? 'Se kjøkken' : 'Explore kitchens', { variant:'outline', onclick:()=>navigate('/') })
       ]),
-      el('p', { class:'muted small', style:'margin-top:14px' }, [no ? 'Har du ikke konto ennå, må du registrere kjøkkenet først.' : 'If you do not have an account yet, register your kitchen first.'])
+      el('p', { class:'muted small', style:'margin-top:14px' }, [no ? 'Har du ikke konto ennå?' : 'No account yet?']),
+      button(no ? 'Registrer nytt kjøkken' : 'Register a new kitchen', { variant:'outline', onclick:()=>navigate('/list') })
     ].filter(Boolean))
   ]);
 }
