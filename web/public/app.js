@@ -11304,6 +11304,27 @@ function getOwnerDashboardToken(){
   } catch(_) { return ''; }
 }
 
+function setOwnerSessionLocal(active){
+  try {
+    if (active) localStorage.setItem('rm_owner_session_active', '1');
+    else localStorage.removeItem('rm_owner_session_active');
+  } catch(_) {}
+  if (!state.ui) state.ui = {};
+  state.ui.ownerSessionActive = !!active;
+}
+
+function hasOwnerSessionLocal(){
+  if (state.ui && state.ui.ownerSessionActive) return true;
+  try {
+    const v = localStorage.getItem('rm_owner_session_active') || '';
+    if (v === '1') {
+      if (state.ui) state.ui.ownerSessionActive = true;
+      return true;
+    }
+  } catch(_) {}
+  return false;
+}
+
 function currentOwnerTokenFromRoute(){
   const parts = (location.pathname || '/').split('/').filter(Boolean);
   if (parts[0] === 'p' && parts[1]) return decodeURIComponent(parts[1]);
@@ -11317,7 +11338,7 @@ function ownerDashboardPath(){
   const od = state.auth && state.auth.authenticated ? state.auth.owner_dashboard : null;
   const sessionToken = od && (od.preview_token || (od.path || '').split('/p/')[1]);
   const routeToken = currentOwnerTokenFromRoute();
-  const localToken = getOwnerDashboardToken();
+  const localToken = hasOwnerSessionLocal() ? getOwnerDashboardToken() : '';
   const token = sessionToken || routeToken || localToken;
   return token ? ('/p/' + encodeURIComponent(token)) : '';
 }
@@ -11325,6 +11346,7 @@ function ownerDashboardPath(){
 function isOwnerContext(){
   if (isOwnerLoggedIn()) return true;
   if (currentOwnerTokenFromRoute()) return true;
+  if (hasOwnerSessionLocal() && getOwnerDashboardToken()) return true;
   return false;
 }
 
@@ -11334,7 +11356,10 @@ function applyAuthData(data){
   state.auth.user = (data && data.user) || null;
   state.auth.owner_dashboard = (data && data.owner_dashboard) || null;
   const od = state.auth.owner_dashboard;
-  if (od && od.preview_token) setOwnerDashboardToken(od.preview_token);
+  if (od && od.preview_token) {
+    setOwnerDashboardToken(od.preview_token);
+    setOwnerSessionLocal(true);
+  }
 }
 
 async function refreshAuth(){
@@ -11365,8 +11390,12 @@ async function ownerLogout(){
     localStorage.removeItem('rm_owner_dashboard_token');
     localStorage.removeItem('rm_owner_token');
     localStorage.removeItem('rm_preview_token');
+    localStorage.removeItem('rm_owner_session_active');
   } catch(_) {}
-  if (state.ui) state.ui.ownerDashboardToken = '';
+  if (state.ui) {
+    state.ui.ownerDashboardToken = '';
+    state.ui.ownerSessionActive = false;
+  }
   navigate('/login');
 }
 
@@ -11418,6 +11447,7 @@ function onRoute(){
     // from Explore/public pages without relying on the browser Back button.
     const token = parts[1];
     setOwnerDashboardToken(token);
+    setOwnerSessionLocal(true);
     state.preview.active = true;
     state.preview.token = token;
     state.preview.err = null;
