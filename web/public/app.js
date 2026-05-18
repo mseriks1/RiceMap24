@@ -1259,6 +1259,7 @@ async function adminResetLocalAdmin(){
   state.admin.createAdminBusy = true; state.admin.loginError=''; render();
   try{
     await apiJson('POST', '/api/auth/dev-reset-admin', { email, password, display_name:'Admin', confirm:'RESET' });
+    state.admin.loginError = state.lang==='no' ? 'Admin er nullstilt. Logger inn…' : 'Admin has been reset. Logging in…';
     await adminLogin();
   }catch(e){
     state.admin.loginError = e?.message || String(e);
@@ -1279,12 +1280,12 @@ async function apiJson(method, url, body){
     body: method==='GET' ? undefined : JSON.stringify(body || {})
   });
   if (!res.ok){
-    // Prefer JSON error bodies, but fall back to plain text (FastAPI may return
-    // HTML on 500s). Keep this message user-visible.
-    let msg = 'Request failed';
+    // Prefer JSON error bodies, but fall back to plain text. Include status so
+    // staging errors are actionable instead of only showing "Request failed".
+    let msg = `Request failed (${res.status})`;
     try{
       const j = await res.json();
-      msg = j.detail || JSON.stringify(j);
+      msg = j.detail || JSON.stringify(j) || msg;
     }catch(e){
       try{ msg = (await res.text()) || msg; }catch(e2){}
     }

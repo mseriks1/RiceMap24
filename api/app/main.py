@@ -9660,11 +9660,18 @@ async def auth_dev_reset_admin(payload: dict, request: Request):
     delete listings, owner users, kitchen pages, images, tickets or settings.
     """
     # Recovery is for non-live staging/local databases. On Render, some staging
-    # services can accidentally have RICEMAP_ENV=production, so allow this only
-    # when the service/public URL clearly says staging.
-    service_hint = (os.environ.get("RENDER_SERVICE_NAME", "") + " " + os.environ.get("RENDER_EXTERNAL_URL", "")).lower()
-    if is_production() and "staging" not in service_hint:
-        raise HTTPException(status_code=404, detail="Not found")
+    # services can accidentally have RICEMAP_ENV=production, and Render's
+    # service-name env var is not always present in all deploy setups. Therefore
+    # check both Render env vars AND the actual request host before blocking.
+    service_hint = " ".join([
+        os.environ.get("RENDER_SERVICE_NAME", ""),
+        os.environ.get("RENDER_EXTERNAL_URL", ""),
+        os.environ.get("RENDER_EXTERNAL_HOSTNAME", ""),
+        str(request.url.hostname or ""),
+    ]).lower()
+    is_staging_host = ("staging" in service_hint) or ("localhost" in service_hint) or ("127.0.0.1" in service_hint)
+    if is_production() and not is_staging_host:
+        raise HTTPException(status_code=404, detail="Admin reset is disabled outside staging/local")
     p = payload or {}
     if str(p.get("confirm") or "").strip().upper() != "RESET":
         raise HTTPException(status_code=400, detail="Type RESET to confirm")
