@@ -9090,6 +9090,24 @@ def create_listing_draft(payload: dict):
         _id, slug, token = create_draft(payload)
         try:
             item = get_by_id(int(_id))
+            email = str(((payload or {}).get("contact") or {}).get("email") or "").strip().lower()
+            password = str((payload or {}).get("owner_password") or "")
+            display_name = str((payload or {}).get("owner_name") or (payload or {}).get("name") or "Kitchen owner").strip()
+            if email and password:
+                existing_user = get_app_user_by_email(email)
+                if not existing_user:
+                    create_app_user(email, password, display_name=display_name, role="owner", listing_id=int(_id), active=True, email_verified=False)
+                elif existing_user.get("role") == "owner":
+                    # Older staging/test records may have been created before owner accounts were linked.
+                    try:
+                        conn = connect()
+                        try:
+                            conn.execute("UPDATE app_users SET listing_id=?, updated_at=datetime('now') WHERE id=? AND (listing_id IS NULL OR listing_id=0)", (int(_id), int(existing_user.get("id") or 0)))
+                            conn.commit()
+                        finally:
+                            conn.close()
+                    except Exception:
+                        pass
             if item:
                 _queue_owner_template_once(item, "welcome_new_owner", "welcome_new_owner")
         except Exception:
@@ -9450,6 +9468,24 @@ async def auth_dev_create_admin(payload: dict, request: Request, key: Optional[s
         raise HTTPException(status_code=400, detail=str(exc))
 
 
+def _auth_user_response(user: Optional[dict]) -> dict:
+    data = {"ok": True, "authenticated": bool(user), "user": user}
+    if user and str(user.get("role") or "") == "owner" and user.get("listing_id"):
+        try:
+            listing = get_by_id(int(user.get("listing_id") or 0))
+            if listing:
+                data["owner_dashboard"] = {
+                    "listing_id": int(listing.get("id") or user.get("listing_id") or 0),
+                    "slug": listing.get("slug") or "",
+                    "preview_token": listing.get("preview_token") or "",
+                    "name": listing.get("name") or "",
+                    "path": "/p/" + str(listing.get("preview_token") or ""),
+                }
+        except Exception:
+            pass
+    return data
+
+
 @app.post("/api/auth/login")
 async def auth_login(payload: dict, request: Request):
     p = payload or {}
@@ -9473,7 +9509,9 @@ async def auth_login(payload: dict, request: Request):
         user_agent=request.headers.get("user-agent", ""),
         days=runtime_config.session_days,
     )
-    response = JSONResponse({"ok": True, "user": user, "expires_at": session.get("expires_at")})
+    payload_out = _auth_user_response(user)
+    payload_out["expires_at"] = session.get("expires_at")
+    response = JSONResponse(payload_out)
     response.set_cookie(SESSION_COOKIE_NAME, token, **_session_cookie_kwargs())
     return response
 
@@ -9491,7 +9529,7 @@ async def auth_logout(request: Request):
 @app.get("/api/auth/me")
 async def auth_me(request: Request):
     user = _current_user_from_request(request)
-    return {"ok": True, "authenticated": bool(user), "user": user}
+    return _auth_user_response(user)
 
 
 @app.get("/api/auth/bootstrap-status")

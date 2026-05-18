@@ -71,6 +71,7 @@ const state = {
   ownerAnnouncements: { snoozed: {}, manualByToken: {}, loadingByToken: {} },
   ui: { searching:false, locating:false, portalView:'list', orderOpen:false, showTop:false, editMode:false, near:{ active:false, label:'', lat:null, lng:null }, gps:{ active:false, lat:null, lng:null }, _leaflet:{ map:null, layer:null, cluster:false } },
   pay: { loading:false, done:false, ok:null, data:null, err:null },
+  auth: { checked:false, authenticated:false, user:null, owner_dashboard:null, loginEmail:'', loginPassword:'', busy:false, error:'' },
   recipes: { loading:false, loaded:false, q:'', items:[], plan:'basic', counts:null, cat:'all' },
   masterclass: { loading:false, loaded:false, items:[], plan:'basic', counts:null, current:null, subscriptionMonth:null, selectedId:null, selected:null, loadingDetail:false, error:'', detailError:'' },
   marketingCoach: { loading:false, loaded:false, items:[], plan:'basic', counts:null, selectedId:null, selected:null, loadingDetail:false, error:'', detailError:'' },
@@ -1838,6 +1839,7 @@ function topBar(){
               ]),
       el('div', { class:'topbar-actions' }, [
         ownerDashboardPath() ? button(state.lang==='no' ? 'Mitt dashboard' : 'My dashboard', { variant:'outline', onclick: ()=>navigate(ownerDashboardPath()), className:'ownerDashboardShortcut' }) : null,
+        (!ownerDashboardPath() && !(location.pathname || '').startsWith('/login')) ? button(state.lang==='no' ? 'Logg inn' : 'Log in', { variant:'outline', onclick: ()=>navigate('/login'), className:'ownerLoginBtn' }) : null,
         button(t('nav.list'), { onclick: ()=>navigate('/list'), className:'registerKitchenBtn' }),
       ].filter(Boolean))
     ]),
@@ -10375,7 +10377,7 @@ function listFallbackText(lang){
 
 function listUiMsg(lang, key){
   const data = {
-    en:{nameReq:'Name is required.',emailReq:'Email is required.',emailValid:'Enter a valid email address.',passwordReq:'Password is required.',passwordLen:'Password should be at least 6 characters.',countryReq:'Country is required.',cityReq:'City is required.',kitchenReq:'Kitchen name is required.',stripeUnavailable:'Stripe Checkout is not configured yet. The page is saved as a draft, but it is not activated without payment.',saveFailed:'Save failed: ',checkoutFailed:'Checkout failed: ',missingCheckout:'Missing checkout URL'},
+    en:{nameReq:'Name is required.',emailReq:'Email is required.',emailValid:'Enter a valid email address.',passwordReq:'Password is required.',passwordLen:'Password should be at least 8 characters.',countryReq:'Country is required.',cityReq:'City is required.',kitchenReq:'Kitchen name is required.',stripeUnavailable:'Stripe Checkout is not configured yet. The page is saved as a draft, but it is not activated without payment.',saveFailed:'Save failed: ',checkoutFailed:'Checkout failed: ',missingCheckout:'Missing checkout URL'},
     no:{nameReq:'Navn mangler.',emailReq:'E-post mangler.',emailValid:'Skriv inn en gyldig e-postadresse.',passwordReq:'Passord mangler.',passwordLen:'Passord bør ha minst 6 tegn.',countryReq:'Land mangler.',cityReq:'By mangler.',kitchenReq:'Kjøkkennavn mangler.',stripeUnavailable:'Stripe Checkout er ikke konfigurert ennå. Siden er lagret som utkast, men aktiveres ikke uten betaling.',saveFailed:'Lagring feilet: ',checkoutFailed:'Betaling feilet: ',missingCheckout:'Mangler checkout-lenke'},
     sv:{nameReq:'Namn saknas.',emailReq:'E-post saknas.',emailValid:'Ange en giltig e-postadress.',passwordReq:'Lösenord saknas.',passwordLen:'Lösenordet bör ha minst 6 tecken.',countryReq:'Land saknas.',cityReq:'Stad saknas.',kitchenReq:'Köksnamn saknas.',stripeUnavailable:'Stripe Checkout är inte konfigurerat ännu. Sidan är sparad som utkast, men aktiveras inte utan betalning.',saveFailed:'Kunde inte spara: ',checkoutFailed:'Betalning misslyckades: ',missingCheckout:'Checkout-länk saknas'},
     da:{nameReq:'Navn mangler.',emailReq:'E-mail mangler.',emailValid:'Indtast en gyldig e-mailadresse.',passwordReq:'Adgangskode mangler.',passwordLen:'Adgangskoden bør have mindst 6 tegn.',countryReq:'Land mangler.',cityReq:'By mangler.',kitchenReq:'Køkkennavn mangler.',stripeUnavailable:'Stripe Checkout er ikke konfigureret endnu. Siden er gemt som kladde, men aktiveres ikke uden betaling.',saveFailed:'Lagring mislykkedes: ',checkoutFailed:'Betaling mislykkedes: ',missingCheckout:'Checkout-link mangler'},
@@ -10562,7 +10564,7 @@ function pageList(){
     req(!!(a.email||'').trim(), 'email', listUiMsg(state.lang,'emailReq'), listUiMsg(state.lang,'emailReq'));
     req(/^\S+@\S+\.\S+$/.test((a.email||'').trim()), 'email', listUiMsg(state.lang,'emailValid'), listUiMsg(state.lang,'emailValid'));
     req(!!(a.password||'').trim(), 'password', listUiMsg(state.lang,'passwordReq'), listUiMsg(state.lang,'passwordReq'));
-    req(String(a.password||'').length >= 6, 'password', listUiMsg(state.lang,'passwordLen'), listUiMsg(state.lang,'passwordLen'));
+    req(String(a.password||'').length >= 8, 'password', listUiMsg(state.lang,'passwordLen'), listUiMsg(state.lang,'passwordLen'));
     req(!!(a.country||'').trim(), 'country', listUiMsg(state.lang,'countryReq'), listUiMsg(state.lang,'countryReq'));
     req(!!(a.city||'').trim(), 'city', listUiMsg(state.lang,'cityReq'), listUiMsg(state.lang,'cityReq'));
     req(!!(a.kitchen_name||d.name||'').trim(), 'kitchen_name', listUiMsg(state.lang,'kitchenReq'), listUiMsg(state.lang,'kitchenReq'));
@@ -10584,6 +10586,8 @@ function pageList(){
       d.billing = d.billing || state.billing || 'monthly';
       d.plan = normalizePlan(d.plan || 'basic');
       const payload = JSON.parse(JSON.stringify(d));
+      payload.owner_password = a.password || '';
+      payload.owner_name = a.name || '';
       let res;
       if (!state.draft.id){
         res = await apiJson('POST','/api/drafts', payload);
@@ -11021,8 +11025,31 @@ function getOwnerDashboardToken(){
 }
 
 function ownerDashboardPath(){
-  const token = getOwnerDashboardToken();
+  const od = state.auth && state.auth.owner_dashboard;
+  const tokenFromAuth = od && (od.preview_token || (od.path || '').split('/p/')[1]);
+  const token = tokenFromAuth || getOwnerDashboardToken();
   return token ? ('/p/' + encodeURIComponent(token)) : '';
+}
+
+function applyAuthData(data){
+  state.auth.checked = true;
+  state.auth.authenticated = !!(data && data.authenticated);
+  state.auth.user = (data && data.user) || null;
+  state.auth.owner_dashboard = (data && data.owner_dashboard) || null;
+  const od = state.auth.owner_dashboard;
+  if (od && od.preview_token) setOwnerDashboardToken(od.preview_token);
+}
+
+async function refreshAuth(){
+  try{
+    const data = await apiGet('/api/auth/me', { timeoutMs: 6000 });
+    applyAuthData(data);
+  }catch(e){
+    state.auth.checked = true;
+    state.auth.authenticated = false;
+    state.auth.user = null;
+    state.auth.owner_dashboard = null;
+  }
 }
 
 function navigate(path){
@@ -11173,6 +11200,43 @@ function pagePayCancel(){
   ]);
 }
 
+
+function pageLogin(){
+  const no = state.lang === 'no';
+  async function doLogin(){
+    state.auth.busy = true;
+    state.auth.error = '';
+    render();
+    try{
+      const data = await apiJson('POST','/api/auth/login', { email: state.auth.loginEmail || '', password: state.auth.loginPassword || '' });
+      applyAuthData(data);
+      state.auth.loginPassword = '';
+      const path = ownerDashboardPath();
+      if (path){ navigate(path); return; }
+      navigate('/');
+    }catch(e){
+      state.auth.error = (e && e.message) ? e.message : String(e);
+      state.auth.busy = false;
+      render();
+    }
+  }
+  return el('div', { class:'container section' }, [
+    el('div', { class:'card', style:'max-width:560px; margin:0 auto' }, [
+      el('div', { class:'kicker' }, [no ? 'Aktør' : 'Kitchen owner']),
+      el('h1', { class:'h2' }, [no ? 'Logg inn på dashboard' : 'Log in to your dashboard']),
+      el('p', { class:'muted' }, [no ? 'Bruk e-posten og passordet du registrerte kjøkkenet med.' : 'Use the email and password you used when registering your kitchen.']),
+      state.auth.error ? el('div', { class:'notice warn', style:'margin:12px 0' }, [state.auth.error]) : null,
+      el('label', {}, [el('span', {}, [no ? 'E-post' : 'Email']), el('input', { class:'input', type:'email', value:state.auth.loginEmail||'', autocomplete:'email', oninput:e=>{ state.auth.loginEmail = e.target.value; } })]),
+      el('label', { style:'margin-top:10px' }, [el('span', {}, [no ? 'Passord' : 'Password']), el('input', { class:'input', type:'password', value:state.auth.loginPassword||'', autocomplete:'current-password', oninput:e=>{ state.auth.loginPassword = e.target.value; }, onkeydown:e=>{ if(e.key==='Enter') doLogin(); } })]),
+      el('div', { class:'row', style:'gap:10px; margin-top:16px; flex-wrap:wrap' }, [
+        button(state.auth.busy ? (no ? 'Logger inn…' : 'Logging in…') : (no ? 'Logg inn' : 'Log in'), { variant:'primary', onclick:doLogin, disabled:state.auth.busy }),
+        button(no ? 'Se kjøkken' : 'Explore kitchens', { variant:'outline', onclick:()=>navigate('/') })
+      ]),
+      el('p', { class:'muted small', style:'margin-top:14px' }, [no ? 'Har du ikke konto ennå, må du registrere kjøkkenet først.' : 'If you do not have an account yet, register your kitchen first.'])
+    ].filter(Boolean))
+  ]);
+}
+
 function routeView(){
   const path = location.pathname;
   const parts = path.split('/').filter(Boolean);
@@ -11216,6 +11280,8 @@ function routeView(){
     }
     return pagePreviewCook(state.currentListing, parts[1]);
   }
+
+  if (parts[0] === 'login') return pageLogin();
 
   if (parts[0] === 'pay' && parts[1] === 'success') return pagePaySuccess();
   if (parts[0] === 'pay' && parts[1] === 'cancel') return pagePayCancel();
@@ -17386,6 +17452,8 @@ async function boot(){
   // showing the app shell. This prevents a blank page when SQLite is locked or
   // one endpoint is slow during local testing.
   onRoute();
+
+  refreshAuth().then(()=>{ render(); }).catch(()=>{});
 
   if (!window.__rm_scroll_listener){
     window.__rm_scroll_listener = true;
