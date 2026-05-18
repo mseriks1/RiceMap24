@@ -2129,8 +2129,8 @@ def hash_password(password: str) -> str:
     This avoids introducing a new dependency before the production auth stack is finalised.
     """
     password = password or ""
-    if len(password) < 8:
-        raise ValueError("Password must be at least 8 characters")
+    if len(password) < 6:
+        raise ValueError("Password must be at least 6 characters")
     salt = secrets.token_bytes(16)
     iterations = 260_000
     digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations)
@@ -2174,8 +2174,8 @@ def create_app_user(email: str, password: str, *, display_name: str = "", role: 
     email_norm = (email or "").strip().lower()
     if not email_norm or "@" not in email_norm:
         raise ValueError("Valid email is required")
-    if len(password or "") < 8:
-        raise ValueError("Password must be at least 8 characters")
+    if len(password or "") < 6:
+        raise ValueError("Password must be at least 6 characters")
     role_norm = (role or "owner").strip().lower()
     if role_norm not in {"owner", "admin"}:
         raise ValueError("Role must be owner or admin")
@@ -2220,6 +2220,71 @@ def authenticate_app_user(email: str, password: str) -> Optional[Dict[str, Any]]
     finally:
         conn.close()
 
+
+
+
+def authenticate_or_migrate_legacy_owner(email: str, password: str) -> Optional[Dict[str, Any]]:
+    """Authenticate older staging owner records that predate app_users linkage.
+
+    Some step 9.5x staging signups stored the owner password only in the
+    listing payload, while create_app_user could fail silently when the
+    password was 6-7 characters. This migrates such records into app_users on
+    successful login so future logins use the normal hashed-password path.
+    """
+    email_norm = (email or "").strip().lower()
+    password_in = password or ""
+    if not email_norm or "@" not in email_norm or len(password_in) < 6:
+        return None
+
+    conn = connect()
+    try:
+        # Limit by LIKE first for speed, then parse JSON safely and compare exact values.
+        rows = conn.execute(
+            "SELECT * FROM listings WHERE lower(data_json) LIKE ? ORDER BY id DESC LIMIT 500",
+            (f"%{email_norm}%",),
+        ).fetchall()
+        matched_listing = None
+        for row in rows:
+            try:
+                listing = row_to_listing(row)
+            except Exception:
+                continue
+            contact = listing.get("contact") or {}
+            listing_email = str(contact.get("email") or listing.get("email") or "").strip().lower()
+            legacy_pw = str(listing.get("owner_password") or "")
+            status = str(listing.get("account_status") or "active").lower()
+            if listing_email == email_norm and legacy_pw == password_in and status != "deleted_by_request":
+                matched_listing = listing
+                break
+
+        if not matched_listing:
+            return None
+
+        listing_id = int(matched_listing.get("id") or 0)
+        display_name = str(matched_listing.get("owner_name") or matched_listing.get("name") or "Kitchen owner")[:120]
+        pw_hash = hash_password(password_in)
+        existing = conn.execute("SELECT * FROM app_users WHERE lower(email)=lower(?)", (email_norm,)).fetchone()
+        if existing:
+            conn.execute(
+                """UPDATE app_users
+                   SET password_hash=?, display_name=COALESCE(NULLIF(display_name,''), ?),
+                       role='owner', listing_id=?, active=1, last_login_at=datetime('now'), updated_at=datetime('now')
+                   WHERE id=?""",
+                (pw_hash, display_name, listing_id, int(existing["id"])),
+            )
+            user_id = int(existing["id"])
+        else:
+            cur = conn.execute(
+                """INSERT INTO app_users (email, password_hash, display_name, role, listing_id, active, email_verified, last_login_at, updated_at)
+                   VALUES (?, ?, ?, 'owner', ?, 1, 0, datetime('now'), datetime('now'))""",
+                (email_norm, pw_hash, display_name, listing_id),
+            )
+            user_id = int(cur.lastrowid)
+        conn.commit()
+        row = conn.execute("SELECT * FROM app_users WHERE id=?", (user_id,)).fetchone()
+        return _user_row_to_dict(row)
+    finally:
+        conn.close()
 
 def create_app_session(user_id: int, *, role: str = "owner", ip: str = "", user_agent: str = "", days: int = 14) -> Tuple[str, Dict[str, Any]]:
     token = secrets.token_urlsafe(48)

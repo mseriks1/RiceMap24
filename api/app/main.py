@@ -117,6 +117,7 @@ from .db import (
     recent_failed_login_count,
     record_login_attempt,
     authenticate_app_user,
+    authenticate_or_migrate_legacy_owner,
     cleanup_expired_app_sessions,
     create_app_session,
     get_user_by_session_token,
@@ -9524,6 +9525,12 @@ async def auth_login(payload: dict, request: Request):
         record_login_attempt(email, ip, success=False, reason="rate_limited")
         raise HTTPException(status_code=429, detail="Too many failed login attempts. Try again later.")
     user = authenticate_app_user(email, password)
+    if not user:
+        # Staging compatibility: migrate older owner records that were created
+        # before app_users/session auth was fully linked. This is only used after
+        # normal authentication fails and requires an exact email + password match
+        # against the original listing payload.
+        user = authenticate_or_migrate_legacy_owner(email, password)
     if not user:
         record_login_attempt(email, ip, success=False, reason="invalid_credentials")
         raise HTTPException(status_code=401, detail="Invalid email or password")
