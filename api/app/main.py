@@ -1276,7 +1276,7 @@ def _startup():
     # Safe demo/test seed: allowed explicitly in local/dev, and also in staging
     # when the PostgreSQL database is empty so staging does not show a broken/empty marketplace.
     # Production never auto-seeds demo data.
-    if runtime_config.allow_demo_seed or is_staging():
+    if runtime_config.allow_demo_seed:
         demo_listings = []
         for item in LISTINGS:
             demo_item = dict(item)
@@ -8135,18 +8135,75 @@ def map_listings(
     return {"items": out, "count": len(out)}
 
 
+def _country_to_iso2(country: Optional[str]) -> str:
+    """Return ISO-3166 alpha-2 for common country names/codes.
+
+    Nominatim countrycodes requires ISO2. Passing values such as "Norway" or
+    "United States" makes geocoding fail, which also makes new kitchens drop
+    out of map/nearest search.
+    """
+    c = (country or "").strip().lower()
+    if not c:
+        return ""
+    if len(c) == 2 and c.isalpha():
+        return c
+    aliases = {
+        "norway":"no", "norge":"no",
+        "sweden":"se", "sverige":"se",
+        "denmark":"dk", "danmark":"dk",
+        "finland":"fi",
+        "united states":"us", "usa":"us", "us":"us", "america":"us",
+        "united kingdom":"gb", "uk":"gb", "great britain":"gb", "england":"gb",
+        "germany":"de", "deutschland":"de",
+        "france":"fr", "spain":"es", "italy":"it", "netherlands":"nl",
+        "portugal":"pt", "ireland":"ie", "switzerland":"ch",
+        "thailand":"th", "philippines":"ph", "filipino":"ph",
+        "vietnam":"vn", "viet nam":"vn", "china":"cn",
+        "indonesia":"id", "korea":"kr", "south korea":"kr",
+    }
+    return aliases.get(c, "")
+
+
+def _fallback_city_geocode(q: str, country: Optional[str]) -> Optional[dict]:
+    """Small offline fallback so staging does not depend fully on Nominatim.
+
+    This is intentionally approximate and city-level only. It is enough for map
+    placement and nearest sorting when external geocoding is unavailable.
+    """
+    text = f"{q or ''} {country or ''}".lower()
+    points = {
+        "oslo": (59.9139, 10.7522), "fredrikstad": (59.2205, 10.9347),
+        "sarpsborg": (59.2839, 11.1096), "moss": (59.4340, 10.6577),
+        "bergen": (60.3913, 5.3221), "trondheim": (63.4305, 10.3951),
+        "stavanger": (58.9700, 5.7331), "tromsø": (69.6492, 18.9553),
+        "stockholm": (59.3293, 18.0686), "gothenburg": (57.7089, 11.9746),
+        "malmö": (55.6050, 13.0038), "copenhagen": (55.6761, 12.5683),
+        "københavn": (55.6761, 12.5683), "helsinki": (60.1699, 24.9384),
+        "london": (51.5072, -0.1276), "new york": (40.7128, -74.0060),
+        "los angeles": (34.0522, -118.2437), "chicago": (41.8781, -87.6298),
+        "bangkok": (13.7563, 100.5018), "manila": (14.5995, 120.9842),
+        "hanoi": (21.0278, 105.8342), "ho chi minh": (10.8231, 106.6297),
+    }
+    for name, (lat, lng) in points.items():
+        if name in text:
+            return {"ok": True, "lat": lat, "lng": lng, "display_name": name.title(), "cached": False, "provider": "fallback_city"}
+    return None
+
+
 @app.get("/api/geocode")
 def geocode(q: str, country: Optional[str] = None):
     """Geocode a location string (city/postcode) to lat/lng.
 
-    Uses OpenStreetMap Nominatim and stores a simple cache in sqlite.
+    Uses OpenStreetMap Nominatim with ISO2 country codes and stores a simple
+    cache. Falls back to a small internal city list if the external lookup fails.
     """
     q_clean = (q or "").strip()
     if not q_clean:
         return {"ok": False}
 
     country_clean = (country or "").strip().lower()
-    key = f"{q_clean.lower()}|{country_clean}"
+    country_iso2 = _country_to_iso2(country_clean)
+    key = f"{q_clean.lower()}|{country_iso2 or country_clean}"
 
     cached = geocache_get(key)
     if cached and cached.get("lat") is not None and cached.get("lng") is not None:
@@ -8160,32 +8217,36 @@ def geocode(q: str, country: Optional[str] = None):
         }
 
     params = {"q": q_clean, "format": "jsonv2", "limit": 1}
-    if country_clean:
-        # Nominatim expects ISO 3166-1 alpha-2 codes in countrycodes
-        params["countrycodes"] = country_clean
+    if country_iso2:
+        params["countrycodes"] = country_iso2
 
     try:
         with httpx.Client(timeout=6.5, headers={"User-Agent": "RiceMap24MVP/1.0 (local dev)"}) as client:
             r = client.get("https://nominatim.openstreetmap.org/search", params=params)
             r.raise_for_status()
             data = r.json()
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
-
-    if not data:
-        return {"ok": False}
-
-    hit = data[0]
-    try:
-        lat_v = float(hit.get("lat"))
-        lng_v = float(hit.get("lon"))
     except Exception:
-        return {"ok": False}
+        data = []
 
-    display = hit.get("display_name") or q_clean
-    geocache_set(key, display, lat_v, lng_v, provider="nominatim")
+    if data:
+        hit = data[0]
+        try:
+            lat_v = float(hit.get("lat"))
+            lng_v = float(hit.get("lon"))
+            display = hit.get("display_name") or q_clean
+            geocache_set(key, display, lat_v, lng_v, provider="nominatim")
+            return {"ok": True, "lat": lat_v, "lng": lng_v, "display_name": display, "cached": False, "provider": "nominatim"}
+        except Exception:
+            pass
 
-    return {"ok": True, "lat": lat_v, "lng": lng_v, "display_name": display, "cached": False, "provider": "nominatim"}
+    fallback = _fallback_city_geocode(q_clean, country_clean)
+    if fallback:
+        try:
+            geocache_set(key, fallback.get("display_name") or q_clean, float(fallback["lat"]), float(fallback["lng"]), provider="fallback_city")
+        except Exception:
+            pass
+        return fallback
+    return {"ok": False}
 
 
 @app.get("/api/listings/{slug}")
@@ -9598,7 +9659,11 @@ async def auth_dev_reset_admin(payload: dict, request: Request):
     It replaces only app_users with role=admin and admin sessions. It does not
     delete listings, owner users, kitchen pages, images, tickets or settings.
     """
-    if is_production():
+    # Recovery is for non-live staging/local databases. On Render, some staging
+    # services can accidentally have RICEMAP_ENV=production, so allow this only
+    # when the service/public URL clearly says staging.
+    service_hint = (os.environ.get("RENDER_SERVICE_NAME", "") + " " + os.environ.get("RENDER_EXTERNAL_URL", "")).lower()
+    if is_production() and "staging" not in service_hint:
         raise HTTPException(status_code=404, detail="Not found")
     p = payload or {}
     if str(p.get("confirm") or "").strip().upper() != "RESET":

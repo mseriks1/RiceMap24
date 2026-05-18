@@ -1197,7 +1197,7 @@ function adminCanCreateLocalAdmin(){
 }
 function adminCanResetLocalAdmin(){
   const bs = state.admin.bootstrapStatus || {};
-  return !!bs && !bs.production && !!bs.has_admin;
+  return !!bs && !bs.production;
 }
 function adminBootstrapHint(){
   const bs = state.admin.bootstrapStatus || {};
@@ -15202,7 +15202,7 @@ el('div', { class:'row', style:'gap:10px; flex-wrap:wrap; margin-top:10px' }, [
             adminCanCreateLocalAdmin() ? button(state.admin.createAdminBusy ? (state.lang==='no'?'Oppretter…':'Creating…') : (state.lang==='no'?'Opprett første lokal admin':'Create first local admin'), { variant:'outline', onclick:adminCreateLocalAdmin }) : null,
             adminCanResetLocalAdmin() ? button(state.admin.createAdminBusy ? (state.lang==='no'?'Nullstiller…':'Resetting…') : (state.lang==='no'?'Nullstill lokal admin':'Reset local admin'), { variant:'outline', onclick:adminResetLocalAdmin }) : null
           ].filter(Boolean)),
-          state.admin.bootstrapStatus && state.admin.bootstrapStatus.has_admin && !adminCanCreateLocalAdmin() ? el('div', { class:'adminLoginHelp' }, [state.lang==='no'?'Hvis gammel admin ikke virker: skriv ønsket admin-e-post og passord i feltene, trykk Nullstill lokal admin, og bekreft med RESET. Dette påvirker ikke kjøkken eller aktørkontoer.':'If the old admin does not work: enter the desired admin email and password, click Reset local admin, and confirm with RESET. This does not affect kitchens or owner accounts.']) : null,
+          adminCanResetLocalAdmin() ? el('div', { class:'adminLoginHelp' }, [state.lang==='no'?'Hvis gammel admin ikke virker: skriv ønsket admin-e-post og passord i feltene, trykk Nullstill lokal admin, og bekreft med RESET. Dette påvirker ikke kjøkken eller aktørkontoer.':'If the old admin does not work: enter the desired admin email and password, click Reset local admin, and confirm with RESET. This does not affect kitchens or owner accounts.']) : null,
           el('details', { class:'adminLegacyDetails' }, [
             el('summary', {}, [state.lang==='no'?'Midlertidig legacy-nøkkel for dev':'Temporary legacy key for dev']),
             el('input', { class:'input adminKeyInput', placeholder:'Admin key', value: state.admin.key || '', oninput:(e)=>{ state.admin.key = e.target.value; localStorage.setItem('rm_admin_key', state.admin.key); render(); } })
