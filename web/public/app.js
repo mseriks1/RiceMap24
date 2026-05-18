@@ -71,7 +71,7 @@ const state = {
   ownerAnnouncements: { snoozed: {}, manualByToken: {}, loadingByToken: {} },
   ui: { searching:false, locating:false, portalView:'list', orderOpen:false, showTop:false, editMode:false, near:{ active:false, label:'', lat:null, lng:null }, gps:{ active:false, lat:null, lng:null }, _leaflet:{ map:null, layer:null, cluster:false } },
   pay: { loading:false, done:false, ok:null, data:null, err:null },
-  auth: { checked:false, authenticated:false, user:null, owner_dashboard:null, loginEmail:'', loginPassword:'', busy:false, error:'' },
+  auth: { checked:false, authenticated:false, user:null, owner_dashboard:null, loginEmail:'', loginPassword:'', busy:false, error:'', resetInfo:false },
   recipes: { loading:false, loaded:false, q:'', items:[], plan:'basic', counts:null, cat:'all' },
   masterclass: { loading:false, loaded:false, items:[], plan:'basic', counts:null, current:null, subscriptionMonth:null, selectedId:null, selected:null, loadingDetail:false, error:'', detailError:'' },
   marketingCoach: { loading:false, loaded:false, items:[], plan:'basic', counts:null, selectedId:null, selected:null, loadingDetail:false, error:'', detailError:'' },
@@ -10465,7 +10465,7 @@ function pageList(){
       saving: false,
       saved: false,
       publishing: false,
-      account: { name:'', email:'', password:'', country:(state.marketCountry||'NO'), city:'', kitchen_name:'' },
+      account: { name:'', email:'', password:'', password_confirm:'', country:(state.marketCountry||'NO'), city:'', kitchen_name:'' },
       errors: {},
       errList: [],
       payload: {
@@ -10490,7 +10490,8 @@ function pageList(){
   }
 
   const d = state.draft.payload;
-  if (!state.draft.account) state.draft.account = { name:'', email:'', password:'', country:d.country||'NO', city:d.city||'', kitchen_name:d.name||'' };
+  if (!state.draft.account) state.draft.account = { name:'', email:'', password:'', password_confirm:'', country:d.country||'NO', city:d.city||'', kitchen_name:d.name||'' };
+  if (typeof state.draft.account.password_confirm === 'undefined') state.draft.account.password_confirm = '';
   const a = state.draft.account;
 
   const params = new URLSearchParams(location.search || '');
@@ -10565,6 +10566,8 @@ function pageList(){
     req(/^\S+@\S+\.\S+$/.test((a.email||'').trim()), 'email', listUiMsg(state.lang,'emailValid'), listUiMsg(state.lang,'emailValid'));
     req(!!(a.password||'').trim(), 'password', listUiMsg(state.lang,'passwordReq'), listUiMsg(state.lang,'passwordReq'));
     req(String(a.password||'').length >= 8, 'password', listUiMsg(state.lang,'passwordLen'), listUiMsg(state.lang,'passwordLen'));
+    req(!!(a.password_confirm||'').trim(), 'password_confirm', no ? 'Bekreft passordet.' : 'Confirm your password.', no ? 'Bekreft passordet.' : 'Confirm your password.');
+    req(String(a.password||'') === String(a.password_confirm||''), 'password_confirm', no ? 'Passordene er ikke like.' : 'Passwords do not match.', no ? 'Passordene er ikke like.' : 'Passwords do not match.');
     req(!!(a.country||'').trim(), 'country', listUiMsg(state.lang,'countryReq'), listUiMsg(state.lang,'countryReq'));
     req(!!(a.city||'').trim(), 'city', listUiMsg(state.lang,'cityReq'), listUiMsg(state.lang,'cityReq'));
     req(!!(a.kitchen_name||d.name||'').trim(), 'kitchen_name', listUiMsg(state.lang,'kitchenReq'), listUiMsg(state.lang,'kitchenReq'));
@@ -10726,7 +10729,8 @@ function pageList(){
           el('h2',{class:'h3'},[L.createAccount]),
           field(L.name, el('input',{class:inputCls('name'), value:a.name, placeholder:'Maria Santos', oninput:e=>setAccount('name', e.target.value)})),
           field(L.email, el('input',{class:inputCls('email'), value:a.email, placeholder:'you@email.com', oninput:e=>setAccount('email', e.target.value)})),
-          field(L.password, el('input',{type:'password', class:inputCls('password'), value:a.password, placeholder:L.passwordPh, oninput:e=>setAccount('password', e.target.value)})),
+          field(L.password, el('input',{type:'password', class:inputCls('password'), value:a.password, placeholder:L.passwordPh, autocomplete:'new-password', oninput:e=>setAccount('password', e.target.value)})),
+          field(state.lang==='no' ? 'Bekreft passord' : 'Confirm password', el('input',{type:'password', class:inputCls('password_confirm'), value:a.password_confirm || '', placeholder:state.lang==='no' ? 'Skriv passordet én gang til' : 'Type the password again', autocomplete:'new-password', oninput:e=>setAccount('password_confirm', e.target.value)})),
           el('div',{class:'row', style:'gap:10px'},[
             el('div',{style:'flex:1'},[field(L.kitchenCountry, el('select',{class:inputCls('country'), value:currentCountry, onchange:e=>setAccount('country', e.target.value)}, RM24_MARKET_ORDER.map(code=>el('option',{value:code, selected: code === currentCountry},[marketNameLocalized(code, state.lang) + ' · ' + RM24_MARKETS[code].currency]))))]),
             el('div',{style:'flex:1'},[field(L.city, el('input',{class:inputCls('city'), value:a.city, placeholder:'Oslo', oninput:e=>setAccount('city', e.target.value)}))])
@@ -11206,6 +11210,7 @@ function pageLogin(){
   async function doLogin(){
     state.auth.busy = true;
     state.auth.error = '';
+    state.auth.resetInfo = false;
     render();
     try{
       const data = await apiJson('POST','/api/auth/login', { email: state.auth.loginEmail || '', password: state.auth.loginPassword || '' });
@@ -11220,21 +11225,47 @@ function pageLogin(){
       render();
     }
   }
-  return el('div', { class:'container section' }, [
-    el('div', { class:'card', style:'max-width:560px; margin:0 auto' }, [
-      el('div', { class:'kicker' }, [no ? 'Aktør' : 'Kitchen owner']),
-      el('h1', { class:'h2' }, [no ? 'Logg inn på dashboard' : 'Log in to your dashboard']),
-      el('p', { class:'muted' }, [no ? 'Bruk e-posten og passordet du registrerte kjøkkenet med.' : 'Use the email and password you used when registering your kitchen.']),
-      state.auth.error ? el('div', { class:'notice warn', style:'margin:12px 0' }, [state.auth.error]) : null,
-      el('label', {}, [el('span', {}, [no ? 'E-post' : 'Email']), el('input', { class:'input', type:'email', value:state.auth.loginEmail||'', autocomplete:'email', oninput:e=>{ state.auth.loginEmail = e.target.value; } })]),
-      el('label', { style:'margin-top:10px' }, [el('span', {}, [no ? 'Passord' : 'Password']), el('input', { class:'input', type:'password', value:state.auth.loginPassword||'', autocomplete:'current-password', oninput:e=>{ state.auth.loginPassword = e.target.value; }, onkeydown:e=>{ if(e.key==='Enter') doLogin(); } })]),
-      el('div', { class:'row', style:'gap:10px; margin-top:16px; flex-wrap:wrap' }, [
-        button(state.auth.busy ? (no ? 'Logger inn…' : 'Logging in…') : (no ? 'Logg inn' : 'Log in'), { variant:'primary', onclick:doLogin, disabled:state.auth.busy }),
-        button(no ? 'Se kjøkken' : 'Explore kitchens', { variant:'outline', onclick:()=>navigate('/') })
+  const resetText = no
+    ? 'Tilbakestilling av passord via e-post kommer når e-postoppsettet er aktivert. Foreløpig må dette håndteres manuelt i test/staging.'
+    : 'Password reset by email will be activated when email delivery is configured. For now, reset must be handled manually in test/staging.';
+  return el('div', { class:'container section authPage' }, [
+    el('div', { class:'authShell' }, [
+      el('div', { class:'authIntro' }, [
+        el('div', { class:'brandMarkLine' }, [
+          el('span', { class:'brandDot' }, []),
+          el('span', {}, ['RiceMap24'])
+        ]),
+        el('h1', {}, [no ? 'Velkommen tilbake til kjøkkenet ditt' : 'Welcome back to your kitchen']),
+        el('p', {}, [no ? 'Logg inn for å oppdatere meny, bilder, priser, synlighet og verktøy.' : 'Log in to update your menu, photos, prices, visibility and owner tools.']),
+        el('div', { class:'authFeatureList' }, [
+          el('div', {}, [el('strong', {}, [no ? 'Dashboard' : 'Dashboard']), el('span', {}, [no ? 'Gå rett tilbake til kjøkkensiden din.' : 'Return directly to your kitchen workspace.'])]),
+          el('div', {}, [el('strong', {}, [no ? 'Meny og bilder' : 'Menu and photos']), el('span', {}, [no ? 'Endringer lagres i PostgreSQL.' : 'Changes are stored in PostgreSQL.'])]),
+          el('div', {}, [el('strong', {}, [no ? 'Synlighet' : 'Visibility']), el('span', {}, [no ? 'Hold Explore-siden oppdatert.' : 'Keep your Explore listing current.'])])
+        ])
       ]),
-      el('p', { class:'muted small', style:'margin-top:14px' }, [no ? 'Har du ikke konto ennå?' : 'No account yet?']),
-      button(no ? 'Registrer nytt kjøkken' : 'Register a new kitchen', { variant:'outline', onclick:()=>navigate('/list') })
-    ].filter(Boolean))
+      el('div', { class:'authCard' }, [
+        el('div', { class:'kicker' }, [no ? 'Aktørinnlogging' : 'Kitchen owner login']),
+        el('h2', {}, [no ? 'Logg inn på dashboard' : 'Log in to dashboard']),
+        el('p', { class:'muted' }, [no ? 'Bruk e-posten og passordet du registrerte kjøkkenet med.' : 'Use the email and password you used when registering your kitchen.']),
+        state.auth.error ? el('div', { class:'notice warn authNotice' }, [state.auth.error]) : null,
+        state.auth.resetInfo ? el('div', { class:'notice authNotice' }, [resetText]) : null,
+        field(no ? 'E-post' : 'Email', el('input', { class:'input authInput', type:'email', value:state.auth.loginEmail||'', autocomplete:'email', placeholder:'you@email.com', oninput:e=>{ state.auth.loginEmail = e.target.value; } })),
+        field(no ? 'Passord' : 'Password', el('input', { class:'input authInput', type:'password', value:state.auth.loginPassword||'', autocomplete:'current-password', placeholder:no ? 'Passord' : 'Password', oninput:e=>{ state.auth.loginPassword = e.target.value; }, onkeydown:e=>{ if(e.key==='Enter') doLogin(); } })),
+        el('div', { class:'authActions' }, [
+          button(state.auth.busy ? (no ? 'Logger inn…' : 'Logging in…') : (no ? 'Logg inn' : 'Log in'), { variant:'primary', onclick:doLogin, disabled:state.auth.busy }),
+          button(no ? 'Se kjøkken' : 'Explore kitchens', { variant:'outline', onclick:()=>navigate('/') })
+        ]),
+        el('button', { class:'linkBtn authForgot', onclick:()=>{ state.auth.resetInfo = !state.auth.resetInfo; render(); } }, [no ? 'Glemt passord?' : 'Forgot password?']),
+        el('div', { class:'authDivider' }, []),
+        el('div', { class:'authSignupBox' }, [
+          el('div', {}, [
+            el('strong', {}, [no ? 'Har du ikke kjøkken ennå?' : 'No kitchen yet?']),
+            el('p', { class:'muted small' }, [no ? 'Registrer et nytt kjøkken og kom tilbake hit senere for innlogging.' : 'Register a new kitchen and return here later to log in.'])
+          ]),
+          button(no ? 'Registrer nytt kjøkken' : 'Register a new kitchen', { variant:'outline', onclick:()=>navigate('/list') })
+        ])
+      ].filter(Boolean))
+    ])
   ]);
 }
 
