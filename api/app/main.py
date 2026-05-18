@@ -68,6 +68,7 @@ from .db import (
     stripe_mark_inactive_by_subscription,
     set_listing_publication,
     soft_delete_listing_by_owner,
+    restore_deleted_listing_by_admin,
     list_customers,
     create_customer,
     update_customer,
@@ -9618,6 +9619,9 @@ def admin_listings(request: Request, key: Optional[str] = None, status: str = "p
                 "published": i.get("published"),
                 "plan_active": i.get("plan_active"),
                 "account_status": i.get("account_status", "active"),
+                "deletion_requested_at": i.get("deletion_requested_at", ""),
+                "deletion_scheduled_for": i.get("deletion_scheduled_for", ""),
+                "deletion_restore_available": i.get("deletion_restore_available", False),
                 "pending_activation": i.get("pending_activation"),
                 "preview_token": i.get("preview_token"),
                 "requested_at": i.get("requested_at"),
@@ -10530,6 +10534,22 @@ def admin_deactivate_listing(listing_id: int, request: Request, key: Optional[st
         return {"ok": True}
     except KeyError:
         raise HTTPException(status_code=404, detail="Not found")
+
+
+@app.post("/api/admin/listings/{listing_id}/restore")
+def admin_restore_deleted_listing(listing_id: int, request: Request, key: Optional[str] = None):
+    _check_admin(key, request=request)
+    try:
+        restored = restore_deleted_listing_by_admin(listing_id)
+        try:
+            log_admin_activity("listing_restore", entity_type="listing", entity_id=listing_id, listing_id=listing_id, customer_no=(restored or {}).get("customer_no") or "", title=(restored or {}).get("name") or f"Listing {listing_id}", details={"from": "deleted_by_request"})
+        except Exception:
+            pass
+        return {"ok": True, "listing": restored}
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Not found")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 

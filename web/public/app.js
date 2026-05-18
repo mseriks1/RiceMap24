@@ -14675,6 +14675,19 @@ function pageAdmin(){
     }
   }
 
+  async function restoreDeletedListing(id){
+    const msg = state.lang==='no'
+      ? 'Gjenopprette dette kjøkkenet? Kontoen åpnes igjen, og synlighet settes tilbake slik den var før sletting hvis mulig.'
+      : 'Restore this kitchen? The account will be reopened, and visibility will be restored to its previous state if possible.';
+    if (!confirm(msg)) return;
+    try{
+      await apiJson('POST', adminUrl(`/api/admin/listings/${id}/restore`), {});
+      await refresh();
+    }catch(e){
+      alert((state.lang==='no'?'Gjenoppretting feilet: ':'Restore failed: ') + (e.message||e));
+    }
+  }
+
   function statusLabel(it){
     if ((it.published|0)===1) return state.lang==='no'?'Live':'Live';
     if ((it.pending_activation|0)===1) return state.lang==='no'?'Venter':'Pending';
@@ -14683,8 +14696,8 @@ function pageAdmin(){
 
   function accountStatusLabel(it){
     const s = String(it?.account_status || 'active').toLowerCase();
-    const labelsNo = { active:'Aktiv', trial:'Trial', past_due:'Forfalt', cancelled:'Avsluttet', paused:'Pauset', archived:'Arkivert', deleted_by_request:'Slettet/GDPR' };
-    const labelsEn = { active:'Active', trial:'Trial', past_due:'Past due', cancelled:'Cancelled', paused:'Paused', archived:'Archived', deleted_by_request:'Deleted/GDPR' };
+    const labelsNo = { active:'Aktiv', trial:'Trial', past_due:'Forfalt', cancelled:'Avsluttet', paused:'Pauset', archived:'Arkivert', deleted_by_request:'Planlagt sletting' };
+    const labelsEn = { active:'Active', trial:'Trial', past_due:'Past due', cancelled:'Cancelled', paused:'Paused', archived:'Archived', deleted_by_request:'Scheduled deletion' };
     return (state.lang==='no' ? labelsNo[s] : labelsEn[s]) || s;
   }
 
@@ -14781,7 +14794,7 @@ function pageAdmin(){
     else if (st==='public_unpaid') list = items.filter(i => String(i.billing_visibility||'hidden')==='public' && String(i.paid_status||'unpaid')!=='paid' && String(i.access_type||'paid')==='paid');
     else if (st==='hidden_valid') list = items.filter(i => String(i.billing_visibility||'hidden')!=='public' && kitchenReadyForPublic(i));
     else if (st.startsWith('plan_')) list = items.filter(i => normalizePlan(i.plan||'basic') === st.slice(5));
-    else if (['active','trial','past_due','cancelled','paused','archived'].includes(st)) list = items.filter(i => String(i.account_status || 'active') === st);
+    else if (['active','trial','past_due','cancelled','paused','archived','deleted_by_request'].includes(st)) list = items.filter(i => String(i.account_status || 'active') === st);
 
     const q = (state.admin.q||'').trim().toLowerCase();
     if (!q) return list;
@@ -14803,12 +14816,15 @@ function pageAdmin(){
     const paidId = `paid_${it.id}`;
     const accountStatusId = `account_status_${it.id}`;
 
+    const isDeletedRequest = String(it.account_status || '') === 'deleted_by_request';
     const actions = el('div', { class:'row', style:'gap:8px; flex-wrap:wrap; justify-content:flex-end' }, [
-      ((it.published|0)===1
-        ? button(state.lang==='no'?'Deaktiver':'Deactivate',{variant:'outline',onclick:()=>deactivate(it.id)})
-        : ((it.pending_activation|0)===1
-          ? button(state.lang==='no'?'Aktiver':'Activate',{variant:'primary',onclick:()=>activate(it.id)})
-          : null)
+      (isDeletedRequest
+        ? button(state.lang==='no'?'Gjenopprett':'Restore',{variant:'primary',onclick:()=>restoreDeletedListing(it.id)})
+        : ((it.published|0)===1
+          ? button(state.lang==='no'?'Deaktiver':'Deactivate',{variant:'outline',onclick:()=>deactivate(it.id)})
+          : ((it.pending_activation|0)===1
+            ? button(state.lang==='no'?'Aktiver':'Activate',{variant:'primary',onclick:()=>activate(it.id)})
+            : null))
       ),
       button(state.lang==='no'?'View as kitchen':'View as kitchen',{variant:'outline',onclick:()=>viewAsKitchen(it)}),
       button(state.lang==='no'?'Lagre':'Save',{variant:'primary',onclick:()=>{
@@ -14839,6 +14855,13 @@ function pageAdmin(){
           (it.contact_phone||it.contact_whatsapp||it.contact_email) ? (' · ' + [it.contact_phone||it.contact_whatsapp||'', it.contact_email||''].filter(Boolean).join(' / ')) : ''
 
 ].filter(Boolean)),
+        (String(it.account_status||'')==='deleted_by_request' ? el('div', { class:'adminReadiness', style:'margin-top:8px' }, [
+          el('strong', {}, [state.lang==='no'?'Planlagt sletting':'Scheduled deletion']),
+          el('div', { class:'muted small' }, [
+            (state.lang==='no'?'Skjult for kunder. Kan gjenopprettes av admin i inntil 90 dager.':'Hidden from customers. Admin can restore it for up to 90 days.'),
+            it.deletion_scheduled_for ? (' ' + (state.lang==='no'?'Frist: ':'Deadline: ') + it.deletion_scheduled_for) : ''
+          ])
+        ]) : null),
         (it.access_type && it.access_type !== 'paid' ? el('div', { class:'adminAccessMini' }, [
           el('span', { class:'tag tag-ok' }, [String(it.access_type || 'paid').toUpperCase()]),
           it.access_expires_at ? el('span', { class:'muted small' }, [(state.lang==='no'?'Utløper: ':'Expires: ') + it.access_expires_at]) : null,
@@ -14861,7 +14884,7 @@ el('div', { class:'row', style:'gap:10px; flex-wrap:wrap; margin-top:10px' }, [
             el('option', { value:'cancelled', selected:(it.account_status||'active')==='cancelled' }, [state.lang==='no'?'Avsluttet':'Cancelled']),
             el('option', { value:'paused', selected:(it.account_status||'active')==='paused' }, [state.lang==='no'?'Pauset':'Paused']),
             el('option', { value:'archived', selected:(it.account_status||'active')==='archived' }, [state.lang==='no'?'Arkivert':'Archived']),
-            el('option', { value:'deleted_by_request', selected:(it.account_status||'active')==='deleted_by_request' }, [state.lang==='no'?'Slettet/GDPR':'Deleted/GDPR']),
+            el('option', { value:'deleted_by_request', selected:(it.account_status||'active')==='deleted_by_request' }, [state.lang==='no'?'Planlagt sletting':'Scheduled deletion']),
           ]),
           el('label', { class:'muted small' }, [state.lang==='no'?'Plan':'Plan']),
           el('select', { class:'input', id: planId, style:'max-width:140px' }, [
@@ -15318,6 +15341,7 @@ el('div', { class:'row', style:'gap:10px; flex-wrap:wrap; margin-top:10px' }, [
     const readyCount = allItems.filter(i => kitchenReadyForPublic(i) && (i.pending_activation|0)===1).length;
     const publicUnpaidCount = allItems.filter(i => String(i.billing_visibility||'hidden')==='public' && String(i.paid_status||'unpaid')!=='paid' && String(i.access_type||'paid')==='paid').length;
     const hiddenValidCount = allItems.filter(i => String(i.billing_visibility||'hidden')!=='public' && kitchenReadyForPublic(i)).length;
+    const deletedCount = allItems.filter(i => String(i.account_status||'active')==='deleted_by_request').length;
     return el('div', { class:'adminToolbar' }, [
       el('select', { class:'input', value: state.admin.status, onchange:(e)=>{ state.admin.status = e.target.value; render(); } }, [
         el('option', { value:'all', selected: state.admin.status==='all' }, [(state.lang==='no'?'Alle':'All') + ` (${counts.all})`]),
@@ -15338,6 +15362,7 @@ el('div', { class:'row', style:'gap:10px; flex-wrap:wrap; margin-top:10px' }, [
         el('option', { value:'cancelled', selected: state.admin.status==='cancelled' }, [(state.lang==='no'?'Avsluttet':'Cancelled') + ` (${accountStatusCounts.cancelled||0})`]),
         el('option', { value:'paused', selected: state.admin.status==='paused' }, [(state.lang==='no'?'Pauset':'Paused') + ` (${accountStatusCounts.paused||0})`]),
         el('option', { value:'archived', selected: state.admin.status==='archived' }, [(state.lang==='no'?'Arkivert':'Archived') + ` (${accountStatusCounts.archived||0})`]),
+        el('option', { value:'deleted_by_request', selected: state.admin.status==='deleted_by_request' }, [(state.lang==='no'?'Planlagt sletting':'Scheduled deletion') + ` (${deletedCount})`]),
       ]),
       el('input', { class:'input adminSearchInput', placeholder: state.lang==='no'?'Søk navn/slug/by/telefon':'Search name/slug/city/phone', value: state.admin.q||'', oninput:(e)=>{ state.admin.q = e.target.value; render(); } }),
     ]);
@@ -16257,7 +16282,7 @@ el('div', { class:'row', style:'gap:10px; flex-wrap:wrap; margin-top:10px' }, [
             el('option', { value:'cancelled', selected:(it.account_status||'active')==='cancelled' }, [state.lang==='no'?'Avsluttet':'Cancelled']),
             el('option', { value:'paused', selected:(it.account_status||'active')==='paused' }, [state.lang==='no'?'Pauset':'Paused']),
             el('option', { value:'archived', selected:(it.account_status||'active')==='archived' }, [state.lang==='no'?'Arkivert':'Archived']),
-            el('option', { value:'deleted_by_request', selected:(it.account_status||'active')==='deleted_by_request' }, [state.lang==='no'?'Slettet/GDPR':'Deleted/GDPR']),
+            el('option', { value:'deleted_by_request', selected:(it.account_status||'active')==='deleted_by_request' }, [state.lang==='no'?'Planlagt sletting':'Scheduled deletion']),
           ])]),
           el('label', {}, [el('span', { class:'muted small' }, [state.lang==='no'?'Tilgangstype':'Access type']), el('select', { class:'input', id:'access_type_'+it.id }, [
             el('option', { value:'paid', selected:access==='paid' }, [state.lang==='no'?'Paid / Stripe':'Paid / Stripe']),

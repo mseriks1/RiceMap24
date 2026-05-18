@@ -2869,11 +2869,12 @@ def upsert_listing(
 
 
 def soft_delete_listing_by_owner(listing_id: int) -> Dict[str, Any]:
-    """Soft-delete/anonymize an owner listing from the public app.
+    """Schedule an owner-requested deletion with a 90-day restore window.
 
-    This hides the kitchen immediately, disables owner login, and removes
-    customer-facing profile/menu/contact data from the listing row. It keeps a
-    minimal technical record for audit/admin consistency.
+    The kitchen is hidden immediately from public pages and owner sessions are
+    revoked, but the listing data is kept for admin review/restore. This is a
+    reversible deactivation, not physical deletion/anonymization. Email reminder
+    automation can be added later when real email delivery is configured.
     """
     conn = connect()
     try:
@@ -2881,38 +2882,30 @@ def soft_delete_listing_by_owner(listing_id: int) -> Dict[str, Any]:
         if not row:
             raise KeyError("not found")
         listing = row_to_listing(row)
-        old_slug = str(listing.get("slug") or ("deleted-" + str(listing_id)))
-        deleted_listing = {
-            "slug": old_slug,
-            "name": "Deleted kitchen",
-            "area": "",
-            "city": "",
-            "country": listing.get("country") or "",
-            "postcode": "",
-            "cuisines": [],
-            "badges": [],
-            "from_price": None,
-            "currency": listing.get("currency") or "NOK",
-            "hero_image": "",
-            "is_demo": bool(listing.get("is_demo", False)),
-            "listing_type": listing.get("listing_type") or "real",
-            "accepts_orders": False,
-            "show_in_actor_marketing": False,
-            "show_in_customer_marketplace": False,
-            "lat": None,
-            "lng": None,
-            "menu": [],
-            "contact": {},
-            "intro": {"en":"", "no":""},
-            "pickup_note": {"en":"", "no":""},
-            "delivery_note": {"en":"", "no":""},
-            "payment_note": {"en":"", "no":""},
-            "availability": {"en":{"deadline":"", "window":""}, "no":{"deadline":"", "window":""}},
-            "deleted_by_request_at": conn.execute("SELECT datetime('now') as t").fetchone()["t"],
-        }
+        now = conn.execute("SELECT datetime('now') as t").fetchone()["t"]
+        delete_at = conn.execute("SELECT datetime('now', '+90 days') as t").fetchone()["t"]
+
+        # Store enough state inside data_json for a clean admin restore later.
+        listing["deletion_requested_at"] = now
+        listing["deletion_scheduled_for"] = delete_at
+        listing["deletion_restore_window_days"] = 90
+        listing["deletion_restore_published"] = int(listing.get("published", 0) or 0)
+        listing["deletion_restore_plan_active"] = int(listing.get("plan_active", 0) or 0)
+        listing["deletion_restore_account_status"] = str(listing.get("account_status") or "active")
+        listing["deletion_restore_available"] = True
+
+        note = str(listing.get("admin_note") or "").strip()
+        extra = f"Owner requested deletion at {now}. Hidden immediately. Restore available until {delete_at}."
+        listing["admin_note"] = (note + "\n" + extra).strip() if note else extra
+        listing["published"] = 0
+        listing["plan_active"] = 0
+        listing["pending_activation"] = 0
+        listing["account_status"] = "deleted_by_request"
+        listing = _apply_billing_visibility(listing)
+
         upsert_listing(
             conn,
-            deleted_listing,
+            listing,
             published=0,
             plan=listing.get("plan", "basic"),
             billing=listing.get("billing", "monthly"),
@@ -2922,7 +2915,7 @@ def soft_delete_listing_by_owner(listing_id: int) -> Dict[str, Any]:
             pending_activation=0,
             requested_at=listing.get("requested_at"),
             activated_at=listing.get("activated_at"),
-            admin_note=(str(listing.get("admin_note") or "") + "\nOwner requested deletion.").strip(),
+            admin_note=listing.get("admin_note", ""),
             paid_status=listing.get("paid_status", "unpaid"),
             paid_until=listing.get("paid_until"),
             last_payment_at=listing.get("last_payment_at"),
@@ -2934,18 +2927,79 @@ def soft_delete_listing_by_owner(listing_id: int) -> Dict[str, Any]:
             stripe_current_period_end=listing.get("stripe_current_period_end"),
             stripe_last_event_at=listing.get("stripe_last_event_at"),
         )
+
         users = conn.execute("SELECT id FROM app_users WHERE listing_id=?", (int(listing_id),)).fetchall()
         user_ids = [int(u["id"]) for u in users]
-        deleted_email = f"deleted-{int(listing_id)}-{uuid.uuid4().hex[:10]}@deleted.local"
         conn.execute(
-            "UPDATE app_users SET email=?, password_hash=NULL, display_name='', active=0, updated_at=datetime('now') WHERE listing_id=?",
-            (deleted_email, int(listing_id)),
+            "UPDATE app_users SET active=0, updated_at=datetime('now') WHERE listing_id=?",
+            (int(listing_id),),
         )
         for uid in user_ids:
             conn.execute("UPDATE app_sessions SET revoked_at=datetime('now'), updated_at=datetime('now') WHERE user_id=? AND revoked_at IS NULL", (uid,))
         conn.commit()
         fresh = conn.execute("SELECT * FROM listings WHERE id=?", (int(listing_id),)).fetchone()
-        return row_to_listing(fresh) if fresh else deleted_listing
+        return row_to_listing(fresh) if fresh else listing
+    finally:
+        conn.close()
+
+
+def restore_deleted_listing_by_admin(listing_id: int) -> Dict[str, Any]:
+    """Restore a listing that was scheduled for deletion by the owner."""
+    conn = connect()
+    try:
+        row = conn.execute("SELECT * FROM listings WHERE id=?", (int(listing_id),)).fetchone()
+        if not row:
+            raise KeyError("not found")
+        listing = row_to_listing(row)
+        if str(listing.get("account_status") or "") != "deleted_by_request":
+            return listing
+
+        restore_status = str(listing.get("deletion_restore_account_status") or "active")
+        if restore_status == "deleted_by_request":
+            restore_status = "active"
+        restore_plan_active = int(listing.get("deletion_restore_plan_active", 1) or 0)
+        restore_published = int(listing.get("deletion_restore_published", 0) or 0)
+
+        note = str(listing.get("admin_note") or "").strip()
+        now = conn.execute("SELECT datetime('now') as t").fetchone()["t"]
+        extra = f"Admin restored kitchen at {now}."
+        listing["admin_note"] = (note + "\n" + extra).strip() if note else extra
+        listing["account_status"] = restore_status
+        listing["plan_active"] = restore_plan_active
+        listing["published"] = restore_published
+        listing["pending_activation"] = 0
+        listing["deletion_restored_at"] = now
+        listing["deletion_restore_available"] = False
+        listing = _apply_billing_visibility(listing)
+
+        upsert_listing(
+            conn,
+            listing,
+            published=int(listing.get("published", 0) or 0),
+            plan=listing.get("plan", "basic"),
+            billing=listing.get("billing", "monthly"),
+            plan_active=int(listing.get("plan_active", 0) or 0),
+            account_status=listing.get("account_status", "active"),
+            preview_token=listing.get("preview_token"),
+            pending_activation=int(listing.get("pending_activation", 0) or 0),
+            requested_at=listing.get("requested_at"),
+            activated_at=listing.get("activated_at"),
+            admin_note=listing.get("admin_note", ""),
+            paid_status=listing.get("paid_status", "unpaid"),
+            paid_until=listing.get("paid_until"),
+            last_payment_at=listing.get("last_payment_at"),
+            stripe_customer_id=listing.get("stripe_customer_id"),
+            stripe_subscription_id=listing.get("stripe_subscription_id"),
+            stripe_checkout_session_id=listing.get("stripe_checkout_session_id"),
+            stripe_status=listing.get("stripe_status"),
+            stripe_price_id=listing.get("stripe_price_id"),
+            stripe_current_period_end=listing.get("stripe_current_period_end"),
+            stripe_last_event_at=listing.get("stripe_last_event_at"),
+        )
+        conn.execute("UPDATE app_users SET active=1, updated_at=datetime('now') WHERE listing_id=?", (int(listing_id),))
+        conn.commit()
+        fresh = conn.execute("SELECT * FROM listings WHERE id=?", (int(listing_id),)).fetchone()
+        return row_to_listing(fresh) if fresh else listing
     finally:
         conn.close()
 
@@ -3170,7 +3224,7 @@ def set_listing_currency(listing_id: int, currency: str) -> Dict[str, Any]:
         conn.close()
 
 def admin_list(status: str = "pending") -> List[Dict[str, Any]]:
-    """status: pending | live | draft | all"""
+    """status: pending | live | draft | deleted | all"""
     refresh_billing_visibility()
     conn = connect()
     try:
@@ -3180,7 +3234,9 @@ def admin_list(status: str = "pending") -> List[Dict[str, Any]]:
         elif status == "live":
             where.append("published=1 AND plan_active=1 AND COALESCE(account_status, 'active') NOT IN ('cancelled','paused','archived','deleted_by_request')")
         elif status == "draft":
-            where.append("published=0 AND pending_activation=0")
+            where.append("published=0 AND pending_activation=0 AND COALESCE(account_status, 'active')!='deleted_by_request'")
+        elif status == "deleted":
+            where.append("COALESCE(account_status, 'active')='deleted_by_request'")
         elif status == "all":
             pass
         else:
