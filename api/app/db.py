@@ -55,6 +55,13 @@ class PgCursor:
         self._cursor = cursor
         self.lastrowid = None
 
+    @property
+    def rowcount(self):
+        # Keep sqlite3-compatible code working on PostgreSQL. psycopg cursors
+        # expose rowcount, but the wrapper previously did not, causing login to
+        # crash during session cleanup before credentials were checked.
+        return getattr(self._cursor, "rowcount", -1)
+
     def fetchone(self):
         row = self._cursor.fetchone()
         if row is None:
@@ -141,6 +148,7 @@ class StaticCursor:
     def __init__(self, rows):
         self._rows = [PgRow(r) if isinstance(r, dict) else r for r in rows]
         self.lastrowid = None
+        self.rowcount = len(self._rows)
 
     def fetchone(self):
         if not self._rows:
@@ -2389,9 +2397,14 @@ def recent_failed_login_count(email: str, ip: str = "", *, minutes: int = 15) ->
 def cleanup_expired_app_sessions() -> int:
     conn = connect()
     try:
-        cur = conn.execute("UPDATE app_sessions SET revoked_at=datetime('now'), updated_at=datetime('now') WHERE revoked_at IS NULL AND expires_at <= ?", (_now_iso(),))
+        now = _now_iso()
+        cur = conn.execute(
+            "UPDATE app_sessions SET revoked_at=?, updated_at=? WHERE revoked_at IS NULL AND expires_at <= ?",
+            (now, now, now),
+        )
         conn.commit()
-        return int(cur.rowcount or 0)
+        rowcount = getattr(cur, "rowcount", 0)
+        return int(rowcount if rowcount and rowcount > 0 else 0)
     finally:
         conn.close()
 
