@@ -3247,7 +3247,7 @@ def list_listings(
     has_family: Optional[bool] = None,
     lat: Optional[float] = None,
     lng: Optional[float] = None,
-    radius_km: float = 40.0,
+    radius_km: float = 20050.0,
     include_drafts: bool = False,
 ) -> List[Dict[str, Any]]:
     if not include_drafts:
@@ -3270,8 +3270,8 @@ def list_listings(
             where.append("UPPER(country)=UPPER(?)")
             params.append(country)
 
-        # If a location is provided, we return nearest within radius_km.
-        # In that case, we ignore text-search 'q' (it's treated as a location query).
+        # If a location is provided, we return kitchens sorted by distance within radius_km.
+        # Frontend uses a broad radius for nearest-search so farther kitchens still appear.
         if not (lat is not None and lng is not None):
             # search: if numeric-ish -> postcode match
             if q:
@@ -3325,7 +3325,7 @@ def list_listings(
                     dkm = haversine_km(float(lat), float(lng), float(it["lat"]), float(it["lng"]))
                 except Exception:
                     continue
-                if dkm <= float(radius_km or 40.0):
+                if dkm <= float(radius_km or 20050.0):
                     it = dict(it)
                     it["distance_km"] = round(dkm, 1)
                     out2.append(it)

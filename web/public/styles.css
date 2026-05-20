@@ -5675,3 +5675,39 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:12px 0;}
 .dangerOutlineBtn{border-color:rgba(160,55,55,.42)!important;color:#8f2424!important;background:#fffafa!important}
 .dangerOutlineBtn:hover{background:#fff1f1!important}
 @media(max-width:760px){.accountControlGrid{grid-template-columns:1fr}.accountControlPanel{padding:16px}}
+
+/* Step 9.76 — clearable location search state */
+.locationActiveNotice{
+  margin:10px auto 0;
+  max-width:760px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  flex-wrap:wrap;
+  padding:10px 14px;
+  border:1px solid rgba(11,47,28,.14);
+  border-radius:999px;
+  background:rgba(255,255,255,.76);
+  color:#5f6b61;
+  font-size:14px;
+}
+.locationActiveNotice .linkBtn,
+.linkBtn{
+  border:0;
+  background:transparent;
+  color:#146b3a;
+  text-decoration:underline;
+  font-weight:800;
+  cursor:pointer;
+  padding:0;
+  font:inherit;
+}
+@media (max-width:720px){
+  .locationActiveNotice{
+    border-radius:18px;
+    align-items:flex-start;
+    justify-content:flex-start;
+    text-align:left;
+  }
+}

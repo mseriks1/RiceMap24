@@ -8035,7 +8035,7 @@ def list_listings(
     has_family: Optional[bool] = None,
     lat: Optional[float] = None,
     lng: Optional[float] = None,
-    radius_km: Optional[float] = 40.0,
+    radius_km: Optional[float] = 20050.0,
 ):
     # Repair older public kitchens that were created before stable geocoding.
     # This makes them eligible for map pins and nearest search without manual DB work.
@@ -8050,7 +8050,7 @@ def list_listings(
         has_family=has_family,
         lat=lat,
         lng=lng,
-        radius_km=float(radius_km or 40.0),
+        radius_km=float(radius_km or 20050.0),
         include_drafts=False,
     )
 

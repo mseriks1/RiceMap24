@@ -762,22 +762,22 @@ Object.assign(copy, {
 // Step 8.67: public-page language pass for Explore and /for-cooks.
 // Keeps Business Academy documents untouched, but ensures public UI strings exist for all selectable languages.
 const RM24_PUBLIC_I18N = {
-  en:{ useMyLocation:'Use my location', mapNeedsInternet:'Map requires internet (Leaflet loads from a CDN).', cuisineTitle:'Cuisine', allAsian:'All Asian', allCuisines:'All cuisines', preorder:'Pre-order', delivery:'Delivery', pickup:'Pickup' },
-  no:{ useMyLocation:'Bruk min posisjon', mapNeedsInternet:'Kart krever internett (Leaflet lastes fra CDN).', cuisineTitle:'Mat-type', allAsian:'All Asian', allCuisines:'Alle kjøkken', preorder:'Forhåndsbestilling', delivery:'Levering', pickup:'Henting' },
-  sv:{ useMyLocation:'Använd min position', mapNeedsInternet:'Kartan kräver internet (Leaflet laddas från CDN).', cuisineTitle:'Mattyp', allAsian:'All Asian', allCuisines:'Alla kök', preorder:'Förbeställning', delivery:'Leverans', pickup:'Upphämtning' },
-  da:{ useMyLocation:'Brug min placering', mapNeedsInternet:'Kortet kræver internet (Leaflet indlæses fra CDN).', cuisineTitle:'Madtype', allAsian:'All Asian', allCuisines:'Alle køkkener', preorder:'Forudbestilling', delivery:'Levering', pickup:'Afhentning' },
-  fi:{ useMyLocation:'Käytä sijaintiani', mapNeedsInternet:'Kartta vaatii internetyhteyden (Leaflet ladataan CDN:stä).', cuisineTitle:'Ruokatyyppi', allAsian:'All Asian', allCuisines:'Kaikki keittiöt', preorder:'Ennakkotilaus', delivery:'Toimitus', pickup:'Nouto' },
-  pt:{ useMyLocation:'Usar a minha localização', mapNeedsInternet:'O mapa requer internet (Leaflet é carregado a partir de CDN).', cuisineTitle:'Tipo de comida', allAsian:'All Asian', allCuisines:'Todas as cozinhas', preorder:'Pré-encomenda', delivery:'Entrega', pickup:'Recolha' },
-  fr:{ useMyLocation:'Utiliser ma position', mapNeedsInternet:'La carte nécessite Internet (Leaflet est chargé depuis un CDN).', cuisineTitle:'Type de cuisine', allAsian:'All Asian', allCuisines:'Toutes les cuisines', preorder:'Précommande', delivery:'Livraison', pickup:'Retrait' },
-  es:{ useMyLocation:'Usar mi ubicación', mapNeedsInternet:'El mapa requiere internet (Leaflet se carga desde CDN).', cuisineTitle:'Tipo de comida', allAsian:'Todo asiático', allCuisines:'Todas las cocinas', preorder:'Pedido anticipado', delivery:'Entrega', pickup:'Recogida' },
-  nl:{ useMyLocation:'Gebruik mijn locatie', mapNeedsInternet:'De kaart vereist internet (Leaflet wordt via CDN geladen).', cuisineTitle:'Keukentype', allAsian:'Alle Aziatisch', allCuisines:'Alle keukens', preorder:'Voorbestelling', delivery:'Bezorging', pickup:'Afhalen' },
-  de:{ useMyLocation:'Meinen Standort verwenden', mapNeedsInternet:'Die Karte benötigt Internet (Leaflet wird von einem CDN geladen).', cuisineTitle:'Küchentyp', allAsian:'Alles Asiatisch', allCuisines:'Alle Küchen', preorder:'Vorbestellung', delivery:'Lieferung', pickup:'Abholung' },
-  th:{ useMyLocation:'ใช้ตำแหน่งของฉัน', mapNeedsInternet:'แผนที่ต้องใช้อินเทอร์เน็ต (Leaflet โหลดจาก CDN)', cuisineTitle:'ประเภทอาหาร', allAsian:'อาหารเอเชียทั้งหมด', allCuisines:'ครัวทั้งหมด', preorder:'สั่งล่วงหน้า', delivery:'จัดส่ง', pickup:'รับเอง' },
-  tl:{ useMyLocation:'Gamitin ang lokasyon ko', mapNeedsInternet:'Kailangan ng internet ang mapa (Leaflet ay mula sa CDN).', cuisineTitle:'Uri ng pagkain', allAsian:'Lahat ng Asian', allCuisines:'Lahat ng kusina', preorder:'Pre-order', delivery:'Delivery', pickup:'Pickup' },
-  vi:{ useMyLocation:'Dùng vị trí của tôi', mapNeedsInternet:'Bản đồ cần internet (Leaflet tải từ CDN).', cuisineTitle:'Loại ẩm thực', allAsian:'Tất cả món Á', allCuisines:'Tất cả bếp', preorder:'Đặt trước', delivery:'Giao hàng', pickup:'Nhận món' },
-  zh:{ useMyLocation:'使用我的位置', mapNeedsInternet:'地图需要互联网（Leaflet 从 CDN 加载）。', cuisineTitle:'菜系', allAsian:'所有亚洲菜', allCuisines:'所有厨房', preorder:'预订', delivery:'配送', pickup:'自取' },
-  id:{ useMyLocation:'Gunakan lokasi saya', mapNeedsInternet:'Peta membutuhkan internet (Leaflet dimuat dari CDN).', cuisineTitle:'Jenis masakan', allAsian:'Semua Asia', allCuisines:'Semua dapur', preorder:'Pre-order', delivery:'Pengiriman', pickup:'Ambil sendiri' },
-  ko:{ useMyLocation:'내 위치 사용', mapNeedsInternet:'지도는 인터넷이 필요합니다(Leaflet은 CDN에서 로드됩니다).', cuisineTitle:'음식 종류', allAsian:'모든 아시아 음식', allCuisines:'모든 주방', preorder:'사전 주문', delivery:'배달', pickup:'픽업' }
+  en:{ useMyLocation:'Use my location', mapNeedsInternet:'Map requires internet (Leaflet loads from a CDN).', cuisineTitle:'Cuisine', allAsian:'All Asian', allCuisines:'All cuisines', preorder:'Pre-order', delivery:'Delivery', pickup:'Pickup', showAllKitchens:'Show all kitchens', locationActive:'Location search is active', showingByDistance:'Showing kitchens in distance order.' },
+  no:{ useMyLocation:'Bruk min posisjon', mapNeedsInternet:'Kart krever internett (Leaflet lastes fra CDN).', cuisineTitle:'Mat-type', allAsian:'All Asian', allCuisines:'Alle kjøkken', preorder:'Forhåndsbestilling', delivery:'Levering', pickup:'Henting', showAllKitchens:'Vis alle kjøkken', locationActive:'Posisjonssøk er aktivt', showingByDistance:'Viser kjøkken i geografisk rekkefølge.' },
+  sv:{ useMyLocation:'Använd min position', mapNeedsInternet:'Kartan kräver internet (Leaflet laddas från CDN).', cuisineTitle:'Mattyp', allAsian:'All Asian', allCuisines:'Alla kök', preorder:'Förbeställning', delivery:'Leverans', pickup:'Upphämtning', showAllKitchens:'Visa alla kök', locationActive:'Platssökning är aktiv', showingByDistance:'Visar kök i geografisk ordning.' },
+  da:{ useMyLocation:'Brug min placering', mapNeedsInternet:'Kortet kræver internet (Leaflet indlæses fra CDN).', cuisineTitle:'Madtype', allAsian:'All Asian', allCuisines:'Alle køkkener', preorder:'Forudbestilling', delivery:'Levering', pickup:'Afhentning', showAllKitchens:'Vis alle køkkener', locationActive:'Placeringssøgning er aktiv', showingByDistance:'Viser køkkener i geografisk rækkefølge.' },
+  fi:{ useMyLocation:'Käytä sijaintiani', mapNeedsInternet:'Kartta vaatii internetyhteyden (Leaflet ladataan CDN:stä).', cuisineTitle:'Ruokatyyppi', allAsian:'All Asian', allCuisines:'Kaikki keittiöt', preorder:'Ennakkotilaus', delivery:'Toimitus', pickup:'Nouto', showAllKitchens:'Näytä kaikki keittiöt', locationActive:'Sijaintihaku on käytössä', showingByDistance:'Näytetään keittiöt etäisyyden mukaan.' },
+  pt:{ useMyLocation:'Usar a minha localização', mapNeedsInternet:'O mapa requer internet (Leaflet é carregado a partir de CDN).', cuisineTitle:'Tipo de comida', allAsian:'All Asian', allCuisines:'Todas as cozinhas', preorder:'Pré-encomenda', delivery:'Entrega', pickup:'Recolha', showAllKitchens:'Ver todas as cozinhas', locationActive:'Pesquisa por localização ativa', showingByDistance:'A mostrar cozinhas por distância.' },
+  fr:{ useMyLocation:'Utiliser ma position', mapNeedsInternet:'La carte nécessite Internet (Leaflet est chargé depuis un CDN).', cuisineTitle:'Type de cuisine', allAsian:'All Asian', allCuisines:'Toutes les cuisines', preorder:'Précommande', delivery:'Livraison', pickup:'Retrait', showAllKitchens:'Voir toutes les cuisines', locationActive:'Recherche par position active', showingByDistance:'Cuisines affichées par distance.' },
+  es:{ useMyLocation:'Usar mi ubicación', mapNeedsInternet:'El mapa requiere internet (Leaflet se carga desde CDN).', cuisineTitle:'Tipo de comida', allAsian:'Todo asiático', allCuisines:'Todas las cocinas', preorder:'Pedido anticipado', delivery:'Entrega', pickup:'Recogida', showAllKitchens:'Ver todas las cocinas', locationActive:'Búsqueda por ubicación activa', showingByDistance:'Mostrando cocinas por distancia.' },
+  nl:{ useMyLocation:'Gebruik mijn locatie', mapNeedsInternet:'De kaart vereist internet (Leaflet wordt via CDN geladen).', cuisineTitle:'Keukentype', allAsian:'Alle Aziatisch', allCuisines:'Alle keukens', preorder:'Voorbestelling', delivery:'Bezorging', pickup:'Afhalen', showAllKitchens:'Alle keukens tonen', locationActive:'Locatiezoekopdracht actief', showingByDistance:'Keukens op afstand weergegeven.' },
+  de:{ useMyLocation:'Meinen Standort verwenden', mapNeedsInternet:'Die Karte benötigt Internet (Leaflet wird von einem CDN geladen).', cuisineTitle:'Küchentyp', allAsian:'Alles Asiatisch', allCuisines:'Alle Küchen', preorder:'Vorbestellung', delivery:'Lieferung', pickup:'Abholung', showAllKitchens:'Alle Küchen anzeigen', locationActive:'Standortsuche ist aktiv', showingByDistance:'Küchen nach Entfernung sortiert.' },
+  th:{ useMyLocation:'ใช้ตำแหน่งของฉัน', mapNeedsInternet:'แผนที่ต้องใช้อินเทอร์เน็ต (Leaflet โหลดจาก CDN)', cuisineTitle:'ประเภทอาหาร', allAsian:'อาหารเอเชียทั้งหมด', allCuisines:'ครัวทั้งหมด', preorder:'สั่งล่วงหน้า', delivery:'จัดส่ง', pickup:'รับเอง', showAllKitchens:'แสดงครัวทั้งหมด', locationActive:'เปิดใช้การค้นหาตามตำแหน่ง', showingByDistance:'แสดงครัวตามระยะทาง' },
+  tl:{ useMyLocation:'Gamitin ang lokasyon ko', mapNeedsInternet:'Kailangan ng internet ang mapa (Leaflet ay mula sa CDN).', cuisineTitle:'Uri ng pagkain', allAsian:'Lahat ng Asian', allCuisines:'Lahat ng kusina', preorder:'Pre-order', delivery:'Delivery', pickup:'Pickup', showAllKitchens:'Show all kitchens', locationActive:'Location search is active', showingByDistance:'Showing kitchens in distance order.' },
+  vi:{ useMyLocation:'Dùng vị trí của tôi', mapNeedsInternet:'Bản đồ cần internet (Leaflet tải từ CDN).', cuisineTitle:'Loại ẩm thực', allAsian:'Tất cả món Á', allCuisines:'Tất cả bếp', preorder:'Đặt trước', delivery:'Giao hàng', pickup:'Nhận món', showAllKitchens:'Xem tất cả bếp', locationActive:'Đang tìm theo vị trí', showingByDistance:'Hiển thị bếp theo khoảng cách.' },
+  zh:{ useMyLocation:'使用我的位置', mapNeedsInternet:'地图需要互联网（Leaflet 从 CDN 加载）。', cuisineTitle:'菜系', allAsian:'所有亚洲菜', allCuisines:'所有厨房', preorder:'预订', delivery:'配送', pickup:'自取', showAllKitchens:'显示所有厨房', locationActive:'位置搜索已启用', showingByDistance:'按距离显示厨房。' },
+  id:{ useMyLocation:'Gunakan lokasi saya', mapNeedsInternet:'Peta membutuhkan internet (Leaflet dimuat dari CDN).', cuisineTitle:'Jenis masakan', allAsian:'Semua Asia', allCuisines:'Semua dapur', preorder:'Pre-order', delivery:'Pengiriman', pickup:'Ambil sendiri', showAllKitchens:'Tampilkan semua dapur', locationActive:'Pencarian lokasi aktif', showingByDistance:'Menampilkan dapur berdasarkan jarak.' },
+  ko:{ useMyLocation:'내 위치 사용', mapNeedsInternet:'지도는 인터넷이 필요합니다(Leaflet은 CDN에서 로드됩니다).', cuisineTitle:'음식 종류', allAsian:'모든 아시아 음식', allCuisines:'모든 주방', preorder:'사전 주문', delivery:'배달', pickup:'픽업', showAllKitchens:'모든 주방 보기', locationActive:'위치 검색이 활성화됨', showingByDistance:'거리순으로 주방을 표시합니다.' }
 };
 for (const [code, vals] of Object.entries(RM24_PUBLIC_I18N)){
   if (!copy[code]) copy[code] = {};
@@ -2220,7 +2220,7 @@ function heroPortal(){
         class:'input',
         placeholder: t('searchPh'),
         value: state.filters.q,
-        oninput: (e)=>{ state.filters.q = e.target.value; if(state.ui.gps) state.ui.gps.active = false; },
+        oninput: (e)=>{ state.filters.q = e.target.value; if(state.ui.gps) state.ui.gps.active = false; if(state.ui.near) state.ui.near.active = false; state.ui.emptyNote = ''; },
         onkeydown: (e)=>{ if(e.key==='Enter'){ e.preventDefault(); doSearch(); } }
       }),
       el('button', {
@@ -2236,13 +2236,17 @@ function heroPortal(){
       el('button', {
         class: `btn outline btn-gps btn-gps-inline ${state.ui.locating ? 'is-loading' : ''}`,
         type:'button',
-        onclick: ()=>useMyLocation()
+        onclick: ()=>{ if(isLocationSearchActive()){ showAllKitchens({ indicate:true, scroll:true }); } else { useMyLocation(); } }
       }, [
         ...(state.ui.locating ? [el('span',{class:'spinner'},[])] : []),
-        t('ui.useMyLocation')
+        isLocationSearchActive() ? t('ui.showAllKitchens') : t('ui.useMyLocation')
       ]),
       portalViewToggle('seg-top')
     ]),
+    isLocationSearchActive() ? el('div', { class:'locationActiveNotice' }, [
+      el('span', {}, [t('ui.locationActive') + (state.ui.near?.label ? `: ${state.ui.near.label}` : '') + '. ' + t('ui.showingByDistance')]),
+      el('button', { type:'button', class:'linkBtn', onclick:()=>showAllKitchens({ indicate:true, scroll:true }) }, [t('ui.showAllKitchens')])
+    ]) : null,
     (state.ui.portalView==='map' ? el('div', { class:'card mapCard', style:'margin-top:12px' }, [
       (!window.L
         ? el('div', { class:'muted' }, [t('ui.mapNeedsInternet')])
@@ -11320,6 +11324,19 @@ async function loadMapListings(){
 }
 
 
+
+function isLocationSearchActive(){
+  return !!((state.ui && state.ui.gps && state.ui.gps.active) || (state.ui && state.ui.near && state.ui.near.active));
+}
+
+async function showAllKitchens(opts={}){
+  state.filters.q = '';
+  state.ui.gps = { active:false, lat:null, lng:null };
+  state.ui.near = { active:false, label:'', lat:null, lng:null };
+  state.ui.emptyNote = '';
+  await loadListings({ indicate: opts.indicate !== false, scroll: opts.scroll !== false, source:'all' });
+}
+
 async function useMyLocation(){
   if (!navigator.geolocation) {
     state.ui.emptyNote = state.lang==='no'
@@ -11409,7 +11426,7 @@ async function loadListings(opts={}){
     params.delete('q');
     params.set('lat', state.ui.gps.lat);
     params.set('lng', state.ui.gps.lng);
-    params.set('radius_km', '40');
+    params.set('radius_km', '20050');
     state.ui.near.active = true;
     state.ui.near.label = state.lang==='no' ? 'din posisjon' : 'your location';
     state.ui.near.lat = state.ui.gps.lat;
@@ -11418,7 +11435,7 @@ async function loadListings(opts={}){
     params.delete('q');
     params.set('lat', geo.lat);
     params.set('lng', geo.lng);
-    params.set('radius_km', '40');
+    params.set('radius_km', '20050');
     state.ui.near.active = true;
     state.ui.near.label = geo.display_name || qRaw;
     state.ui.near.lat = geo.lat;
@@ -11430,14 +11447,13 @@ async function loadListings(opts={}){
     state.ui.near.lng = null;
   }
 
-  // Fetch listings. If nearest-mode yields no results inside the normal radius,
-  // keep the location search and widen the radius so the user sees the nearest
-  // available kitchens instead of an empty city result.
+  // Fetch listings. Location/GPS mode uses a broad radius so users see the nearest kitchens first,
+  // but can still scroll farther results without refreshing or clearing the page manually.
   let data = await apiGet(`/api/listings?${params.toString()}`);
   if ((geo || gpsActive) && data && Array.isArray(data.items) && data.items.length === 0) {
     try {
       const wideParams = new URLSearchParams(params.toString());
-      wideParams.set('radius_km', '10000');
+      wideParams.set('radius_km', '20050');
       const data2 = await apiGet(`/api/listings?${wideParams.toString()}`);
       if (data2 && Array.isArray(data2.items) && data2.items.length > 0) {
         data = data2;

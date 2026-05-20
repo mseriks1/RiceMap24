@@ -17,7 +17,7 @@ services:
       - key: RICEMAP_DEPLOYMENT_REGION
         value: frankfurt
       - key: RICEMAP_RELEASE_VERSION
-        value: step9.41-postgresql-runtime-fix
+        value: step9.76-location-search-reset-and-distance-order-fix
       - key: RICEMAP_PUBLIC_BASE_URL
         sync: false
       - key: RICEMAP_SESSION_SECRET
