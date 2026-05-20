@@ -1114,12 +1114,19 @@ function assetUrl(p){
 
 // Some early demo seeds referenced an asset that no longer exists (assets/hero_maria.jpg).
 // To avoid "missing image" in Explore + dashboard previews, normalize to a real default.
-function safeHeroPath(p){
+function isDemoListing(listing){
+  if(!listing || typeof listing !== 'object') return false;
+  return !!listing.is_demo || String(listing.listing_type || '').trim().toLowerCase() === 'demo';
+}
+
+function safeHeroPath(p, listing=null){
   const s = (p || '').trim();
   // Empty means the kitchen has not uploaded a photo yet. Do not show demo/test images.
   if(!s) return '';
+  // Real kitchens must never display bundled demo/test assets.
+  if(!isDemoListing(listing) && isDemoAssetPath(s)) return '';
   // Only old demo rows that explicitly reference the removed Maria asset get mapped to a real demo image.
-  if(s.includes('hero_maria.jpg')) return 'assets/hero_fusion.jpg';
+  if(isDemoListing(listing) && s.includes('hero_maria.jpg')) return 'assets/hero_fusion.jpg';
   return s;
 }
 
@@ -1135,19 +1142,19 @@ function imagePlaceholder(className){
 
 function signatureImagePath(listing){
   const direct = (listing?.signature_image || '').trim();
-  if(direct) return direct;
+  if(direct && (isDemoListing(listing) || !isDemoAssetPath(direct))) return direct;
   const menu = Array.isArray(listing?.menu) ? listing.menu : [];
   for(const item of menu){
     if(!item || typeof item !== 'object') continue;
     const tags = Array.isArray(item.tags) ? item.tags : (item.tags ? [item.tags] : []);
     const isSignature = tags.some(t => String(t || '').trim().toLowerCase() === 'signature');
     const image = String(item.image || '').trim();
-    if(isSignature && image) return image;
+    if(isSignature && image && (isDemoListing(listing) || !isDemoAssetPath(image))) return image;
   }
   for(const item of menu){
     if(!item || typeof item !== 'object') continue;
     const image = String(item.image || '').trim();
-    if(image) return image;
+    if(image && (isDemoListing(listing) || !isDemoAssetPath(image))) return image;
   }
   return '';
 }
@@ -2380,7 +2387,7 @@ function listingCard(item){
 
   const cuisineChips = (item.cuisines||[]).slice(0,2).map(k=>el('span', { class:'pill' }, [cuisineName(k)]));
 
-  const cardHero = safeHeroPath(item.hero_image);
+  const cardHero = safeHeroPath(item.hero_image, item);
   const z = (()=>{
     const n = Number(item.explore_zoom);
     if (!isFinite(n)) return 120;
@@ -3767,8 +3774,8 @@ function pageCook(listing){
 
   const body = el('div', { class:'container cookContainer' }, [
     el('div', { class:'cook-hero' }, [
-      safeHeroPath(listing.hero_image)
-        ? el('div', { class:'cook-img', style:`background-image:url(${assetUrl(safeHeroPath(listing.hero_image))})` })
+      safeHeroPath(listing.hero_image, listing)
+        ? el('div', { class:'cook-img', style:`background-image:url(${assetUrl(safeHeroPath(listing.hero_image, listing))})` })
         : imagePlaceholder('cook-img'),
       el('div', { class:'cook-head' }, [
         el('div', { class:'row', style:'justify-content:space-between; align-items:flex-start' }, [
@@ -4090,7 +4097,8 @@ function pagePreviewCook(listing, token){
       o.editListing = JSON.parse(JSON.stringify(listing || {}));
       o.editListing._id = listing?.id;
     }
-    const x = o.editListing;
+    const x = stripDemoImagesFromListingPayload(o.editListing);
+    o.editListing = x;
     if (!x.contact) x.contact = {};
     if (!x.intro) x.intro = { en:'', no:'' };
     if (!x.flyer_headline || typeof x.flyer_headline !== 'object') x.flyer_headline = { en:'', no:'' };
@@ -4121,7 +4129,7 @@ function pagePreviewCook(listing, token){
     render();
     try{
       if (!d.slug) d.slug = listing?.slug || ('my-kitchen-' + Math.floor(Math.random()*9999));
-      const payload = JSON.parse(JSON.stringify(d));
+      const payload = stripDemoImagesFromListingPayload(JSON.parse(JSON.stringify(d)));
       delete payload._id;
       await apiJson('POST', `/api/owner/${encodeURIComponent(dlToken)}/save`, payload);
       const fresh = await apiGet(`/api/preview/${encodeURIComponent(dlToken)}`);
@@ -4734,7 +4742,7 @@ const Y = {
             : `Too many dishes for ${String(listing.plan||'basic').toUpperCase()}. Max ${limit}.`);
         }
         // Remove helper fields
-        const payload = JSON.parse(JSON.stringify(d));
+        const payload = stripDemoImagesFromListingPayload(JSON.parse(JSON.stringify(d)));
         delete payload._id;
 
         await apiJson('POST', `/api/owner/${encodeURIComponent(dlToken)}/save`, payload);
@@ -7386,7 +7394,7 @@ const Y = {
         el('div', { class:'grid2', style:'margin-top:12px' }, [
           el('div', {}, [
             (()=>{
-              const currentHero = safeHeroPath(d.hero_image);
+              const currentHero = safeHeroPath(d.hero_image, d);
               const heroImg = currentHero ? el('img', { class:'imgWide', src: assetUrl(currentHero), alt:'hero' }) : imagePlaceholder('imgWide');
               return el('div', {}, [
                 el('div', { class:'muted small' }, [kitchenEditText('hero')]),
@@ -7413,7 +7421,7 @@ const Y = {
               if (d.explore_zoom==null || isNaN(Number(d.explore_zoom))) d.explore_zoom = 120;
               // IMPORTANT: make the preview use the exact same markup+CSS as Explore cards
               // so the crop looks identical (same width rules + same height).
-              const currentHeroForPreview = safeHeroPath(d.hero_image);
+              const currentHeroForPreview = safeHeroPath(d.hero_image, d);
               const previewImg = currentHeroForPreview
                 ? el('div', {
                     class:'card-img focalCardImg',
@@ -10316,7 +10324,7 @@ function ownerToolsText(key, params={}){
       ]),
       el('div',{class:'builderConceptCard'},[el('div',{class:'builderKicker'},[L.howWorks]),el('h3',{},[L.coachingTitle]),el('p',{},[L.coachingText])]),
       el('div',{class:'builderDataCard'},[
-        el('div',{class:'builderDataHeader'},[el('div',{},[el('div',{class:'builderKicker'},[L.readFrom]),el('h2',{},[L.startPoint]),el('p',{},[L.checkPage])]),listing?.hero_image ? el('img',{class:'builderKitchenThumb',src:assetUrl(safeHeroPath(listing.hero_image)),alt:''}) : null].filter(Boolean)),
+        el('div',{class:'builderDataHeader'},[el('div',{},[el('div',{class:'builderKicker'},[L.readFrom]),el('h2',{},[L.startPoint]),el('p',{},[L.checkPage])]),safeHeroPath(listing?.hero_image, listing) ? el('img',{class:'builderKitchenThumb',src:assetUrl(safeHeroPath(listing.hero_image, listing)),alt:''}) : null].filter(Boolean)),
         dataSection(L.kitchenProfile,[cardItem(L.kitchenName,listing?.name),cardItem(L.contact,[listing?.contact?.email, listing?.contact?.phone || listing?.contact?.whatsapp].filter(Boolean).join(' / ')),cardItem(L.area,[listing?.area,listing?.city,listing?.country].filter(Boolean).join(', ')),cardItem(L.cuisine,cuisineText),cardItem(L.instagram,listing?.contact?.instagram ? '@'+listing.contact.instagram : ''),cardItem(L.intro,txt(listing?.intro))]),
         dataSection(L.menuOps,[cardItem(L.dishCount,menu.length),cardItem(L.photos,`${imgCount}/${menu.length}`),cardItem(L.priceFrom,minPrice ? `${minPrice} ${listing?.currency || ''}` : ''),cardItem(L.pickup,txt(listing?.pickup_note)),cardItem(L.delivery,txt(listing?.delivery_note)),cardItem(L.preorder,[txt(listing?.availability?.[state.lang]?.deadline || listing?.availability?.no?.deadline || listing?.availability?.en?.deadline), txt(listing?.availability?.[state.lang]?.window || listing?.availability?.no?.window || listing?.availability?.en?.window)].filter(Boolean).join(' / '))]),
         dataSection(L.subscriptionTools,[cardItem(L.subscription,plan),cardItem(L.availableTools,toolsByPlan.join(', ')),cardItem(L.kitchenPage,publicLink)])
@@ -10804,7 +10812,7 @@ function pageList(){
       saving: false,
       saved: false,
       publishing: false,
-      account: { name:'', email:'', password:'', password_confirm:'', country:(state.marketCountry||'NO'), city:'', kitchen_name:'' },
+      account: { name:'', email:'', password:'', password_confirm:'', country:(state.marketCountry||'NO'), city:'', postcode:'', kitchen_name:'' },
       errors: {},
       errList: [],
       payload: {
@@ -10829,8 +10837,9 @@ function pageList(){
   }
 
   const d = state.draft.payload;
-  if (!state.draft.account) state.draft.account = { name:'', email:'', password:'', password_confirm:'', country:d.country||'NO', city:d.city||'', kitchen_name:d.name||'' };
+  if (!state.draft.account) state.draft.account = { name:'', email:'', password:'', password_confirm:'', country:d.country||'NO', city:d.city||'', postcode:d.postcode||'', kitchen_name:d.name||'' };
   if (typeof state.draft.account.password_confirm === 'undefined') state.draft.account.password_confirm = '';
+  if (typeof state.draft.account.postcode === 'undefined') state.draft.account.postcode = d.postcode || '';
   const a = state.draft.account;
 
   const params = new URLSearchParams(location.search || '');
@@ -10861,6 +10870,7 @@ function pageList(){
     a[path] = value;
     if (path === 'kitchen_name') { d.name = value; d.slug = slugify(value); }
     if (path === 'city') d.city = value;
+    if (path === 'postcode') d.postcode = value;
     if (path === 'country') {
       const c = normalizeMarketCountry(value);
       d.country = c; d.billing_market = c; d.currency = marketForCountry(c).currency; d.tax_behavior = marketForCountry(c).taxBehavior;
@@ -10909,6 +10919,7 @@ function pageList(){
     req(String(a.password||'') === String(a.password_confirm||''), 'password_confirm', authT('passwordMismatch'), authT('passwordMismatch'));
     req(!!(a.country||'').trim(), 'country', listUiMsg(state.lang,'countryReq'), listUiMsg(state.lang,'countryReq'));
     req(!!(a.city||'').trim(), 'city', listUiMsg(state.lang,'cityReq'), listUiMsg(state.lang,'cityReq'));
+    req(!!(a.postcode||d.postcode||'').trim(), 'postcode', state.lang==='no' ? 'Postnummer er påkrevd.' : 'Postal code / ZIP is required.', state.lang==='no' ? 'Postnummer er påkrevd.' : 'Postal code / ZIP is required.');
     req(!!(a.kitchen_name||d.name||'').trim(), 'kitchen_name', listUiMsg(state.lang,'kitchenReq'), listUiMsg(state.lang,'kitchenReq'));
     return issues;
   }
@@ -10920,6 +10931,7 @@ function pageList(){
       d.name = (a.kitchen_name || d.name || 'My RiceMap24 Kitchen').trim();
       d.slug = slugify(d.name) || ('my-kitchen-' + Math.floor(Math.random()*9999));
       d.city = (a.city || d.city || '').trim();
+      d.postcode = (a.postcode || d.postcode || '').trim();
       d.country = normalizeMarketCountry(a.country || d.country || state.marketCountry || 'NO');
       d.billing_market = d.country;
       d.currency = marketForCountry(d.country).currency;
@@ -11070,9 +11082,10 @@ function pageList(){
           field(L.email, el('input',{class:inputCls('email'), value:a.email, placeholder:'you@email.com', oninput:e=>setAccount('email', e.target.value)})),
           field(L.password, el('input',{type:'password', class:inputCls('password'), value:a.password, placeholder:L.passwordPh, autocomplete:'new-password', oninput:e=>setAccount('password', e.target.value)})),
           field(authT('confirmPassword'), el('input',{type:'password', class:inputCls('password_confirm'), value:a.password_confirm || '', placeholder:authT('confirmPasswordPh'), autocomplete:'new-password', oninput:e=>setAccount('password_confirm', e.target.value)})),
-          el('div',{class:'row', style:'gap:10px'},[
-            el('div',{style:'flex:1'},[field(L.kitchenCountry, el('select',{class:inputCls('country'), value:currentCountry, onchange:e=>setAccount('country', e.target.value)}, RM24_MARKET_ORDER.map(code=>el('option',{value:code, selected: code === currentCountry},[marketNameLocalized(code, state.lang) + ' · ' + RM24_MARKETS[code].currency]))))]),
-            el('div',{style:'flex:1'},[field(L.city, el('input',{class:inputCls('city'), value:a.city, placeholder:'Oslo', oninput:e=>setAccount('city', e.target.value)}))])
+          el('div',{class:'row', style:'gap:10px; flex-wrap:wrap'},[
+            el('div',{style:'flex:1; min-width:180px'},[field(L.kitchenCountry, el('select',{class:inputCls('country'), value:currentCountry, onchange:e=>setAccount('country', e.target.value)}, RM24_MARKET_ORDER.map(code=>el('option',{value:code, selected: code === currentCountry},[marketNameLocalized(code, state.lang) + ' · ' + RM24_MARKETS[code].currency]))))]),
+            el('div',{style:'flex:1; min-width:140px'},[field(state.lang==='no' ? 'Postnummer' : 'Postal code / ZIP', el('input',{class:inputCls('postcode'), value:a.postcode || d.postcode || '', placeholder: currentCountry==='US' ? '10001' : (currentCountry==='GB' ? 'SW1A 1AA' : '1607'), oninput:e=>setAccount('postcode', e.target.value)}))]),
+            el('div',{style:'flex:1; min-width:160px'},[field(L.city, el('input',{class:inputCls('city'), value:a.city, placeholder:'Oslo', oninput:e=>setAccount('city', e.target.value)}))])
           ]),
           field(L.kitchenName, el('input',{class:inputCls('kitchen_name'), value:a.kitchen_name, placeholder:'Maria’s Filipino Kusina', oninput:e=>setAccount('kitchen_name', e.target.value)})),
           field(L.referral, el('input',{class:'input', value:a.referral_code || d.referred_by_code || '', placeholder:'RM24-MARIA82', oninput:e=>{ const v=String(e.target.value||'').toUpperCase(); a.referral_code=v; d.referred_by_code=v; state.draft.saved=false; }})),
