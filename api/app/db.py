@@ -2354,6 +2354,14 @@ def record_login_attempt(email: str, ip: str = "", *, success: bool = False, rea
 
 
 def recent_failed_login_count(email: str, ip: str = "", *, minutes: int = 15) -> int:
+    """Count recent failed logins without SQLite-only date modifiers.
+
+    Earlier builds used datetime('now', ?) with a value like '-15 minutes'.
+    That works in SQLite, but PostgreSQL has no compatible datetime() function,
+    so owner/admin login could return HTTP 500 before credentials were even
+    checked. Compute the cutoff in Python and use one plain parameter instead.
+    """
+    cutoff = (datetime.utcnow() - timedelta(minutes=max(1, int(minutes or 15)))).strftime("%Y-%m-%d %H:%M:%S")
     conn = connect()
     try:
         row = conn.execute(
@@ -2361,10 +2369,10 @@ def recent_failed_login_count(email: str, ip: str = "", *, minutes: int = 15) ->
             SELECT COUNT(*) AS c
             FROM login_attempts
             WHERE success=0
-              AND created_at >= datetime('now', ?)
+              AND created_at >= ?
               AND (lower(email)=lower(?) OR ip=?)
             """,
-            (f"-{max(1, int(minutes or 15))} minutes", (email or "").strip().lower(), (ip or "")[:120]),
+            (cutoff, (email or "").strip().lower(), (ip or "")[:120]),
         ).fetchone()
         return int(row["c"] or 0) if row else 0
     finally:
