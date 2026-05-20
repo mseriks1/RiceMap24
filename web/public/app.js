@@ -14741,6 +14741,23 @@ function pageAdmin(){
     }
   }
 
+  async function hardDeleteListing(id, name){
+    const no = state.lang === 'no';
+    const label = name ? `"${name}"` : ('#' + id);
+    const msg = no
+      ? `Slette ${label} permanent fra databasen? Dette er kun for manuell admin-opprydding av testaktører. Brukerens egen sletting skal fortsatt være planlagt sletting med 90 dagers gjenoppretting.`
+      : `Permanently delete ${label} from the database? This is only for manual admin cleanup of test actors. Owner self-deletion still remains scheduled deletion with a 90-day restore window.`;
+    if (!confirm(msg)) return;
+    const confirmText = prompt(no ? 'Skriv DELETE med store bokstaver for å slette permanent.' : 'Type DELETE in uppercase to permanently delete.');
+    if (confirmText !== 'DELETE') return;
+    try{
+      await apiJson('DELETE', adminUrl(`/api/admin/listings/${id}/hard-delete`), { confirm:'DELETE' });
+      await refresh();
+    }catch(e){
+      alert((no?'Permanent sletting feilet: ':'Permanent delete failed: ') + (e.message||e));
+    }
+  }
+
   function statusLabel(it){
     if ((it.published|0)===1) return state.lang==='no'?'Live':'Live';
     if ((it.pending_activation|0)===1) return state.lang==='no'?'Venter':'Pending';
@@ -14880,6 +14897,7 @@ function pageAdmin(){
             : null))
       ),
       button(state.lang==='no'?'View as kitchen':'View as kitchen',{variant:'outline',onclick:()=>viewAsKitchen(it)}),
+      button(state.lang==='no'?'Slett permanent':'Delete permanently',{variant:'outline',className:'dangerOutlineBtn',onclick:()=>hardDeleteListing(it.id, it.name || it.slug || '')}),
       button(state.lang==='no'?'Lagre':'Save',{variant:'primary',onclick:()=>{
         const plan = document.getElementById(planId)?.value;
         const billing = document.getElementById(billId)?.value;

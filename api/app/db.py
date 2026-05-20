@@ -3210,6 +3210,53 @@ def get_by_id(_id: int) -> Optional[Dict[str, Any]]:
         conn.close()
 
 
+def hard_delete_listing_by_admin(listing_id: int) -> Dict[str, Any]:
+    """Permanently delete a listing and directly related local app data.
+
+    This is for admin cleanup of test/staging actors. Owner-initiated deletion
+    must continue to use soft_delete_listing_by_owner(), which hides the
+    kitchen and keeps a 90-day restore window. This function does not delete
+    uploaded image files from disk yet; it removes the database records so the
+    actor disappears from admin, Explore and owner login.
+    """
+    conn = connect()
+    try:
+        row = conn.execute("SELECT * FROM listings WHERE id=?", (int(listing_id),)).fetchone()
+        if not row:
+            raise KeyError("not found")
+        listing = row_to_listing(row)
+
+        users = conn.execute("SELECT id FROM app_users WHERE listing_id=?", (int(listing_id),)).fetchall()
+        user_ids = [int(u["id"]) for u in users]
+        for uid in user_ids:
+            conn.execute("DELETE FROM app_sessions WHERE user_id=?", (uid,))
+        conn.execute("DELETE FROM app_users WHERE listing_id=?", (int(listing_id),))
+
+        tickets = conn.execute("SELECT id FROM support_tickets WHERE listing_id=?", (int(listing_id),)).fetchall()
+        ticket_ids = [int(t["id"]) for t in tickets]
+        for tid in ticket_ids:
+            conn.execute("DELETE FROM support_ticket_messages WHERE ticket_id=?", (tid,))
+        conn.execute("DELETE FROM support_tickets WHERE listing_id=?", (int(listing_id),))
+
+        conn.execute("DELETE FROM receipts WHERE listing_id=?", (int(listing_id),))
+        conn.execute("DELETE FROM accounting_transactions WHERE listing_id=?", (int(listing_id),))
+        conn.execute("DELETE FROM customers WHERE listing_id=?", (int(listing_id),))
+        conn.execute("DELETE FROM supplier_clicks WHERE listing_id=?", (int(listing_id),))
+        conn.execute("DELETE FROM stripe_webhook_events WHERE listing_id=?", (int(listing_id),))
+        conn.execute("DELETE FROM admin_activity_log WHERE listing_id=?", (int(listing_id),))
+        conn.execute("DELETE FROM listings WHERE id=?", (int(listing_id),))
+        conn.commit()
+        return {
+            "id": int(listing_id),
+            "name": listing.get("name") or "",
+            "slug": listing.get("slug") or "",
+            "customer_no": listing.get("customer_no") or "",
+            "deleted": True,
+        }
+    finally:
+        conn.close()
+
+
 
 def set_listing_coordinates(listing_id: int, lat: Optional[float], lng: Optional[float]) -> None:
     """Store approximate geocoded coordinates on a listing and in data_json.

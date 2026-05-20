@@ -69,6 +69,7 @@ from .db import (
     set_listing_publication,
     soft_delete_listing_by_owner,
     restore_deleted_listing_by_admin,
+    hard_delete_listing_by_admin,
     list_customers,
     create_customer,
     update_customer,
@@ -10696,6 +10697,45 @@ def admin_restore_deleted_listing(listing_id: int, request: Request, key: Option
         except Exception:
             pass
         return {"ok": True, "listing": restored}
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Not found")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.delete("/api/admin/listings/{listing_id}/hard-delete")
+def admin_hard_delete_listing(listing_id: int, payload: dict | None = None, request: Request = None, key: Optional[str] = None):
+    """Permanently delete a listing, intended for admin cleanup of test actors.
+
+    Owner deletion remains soft/scheduled with a 90-day restore window. This
+    endpoint requires explicit DELETE confirmation and should be used manually
+    by admin only.
+    """
+    _check_admin(key, request=request)
+    p = payload or {}
+    confirm = str(p.get("confirm") or "").strip().upper()
+    if confirm != "DELETE":
+        raise HTTPException(status_code=400, detail="Type DELETE to permanently delete this actor")
+    before = None
+    try:
+        before = get_by_id(listing_id)
+    except Exception:
+        before = None
+    try:
+        deleted = hard_delete_listing_by_admin(listing_id)
+        try:
+            log_admin_activity(
+                "listing_hard_delete",
+                entity_type="listing",
+                entity_id=listing_id,
+                listing_id=None,
+                customer_no=(before or {}).get("customer_no") or deleted.get("customer_no") or "",
+                title=(before or {}).get("name") or deleted.get("name") or f"Listing {listing_id}",
+                details={"manual_admin_delete": True, "deleted_listing_id": listing_id},
+            )
+        except Exception:
+            pass
+        return {"ok": True, "deleted": deleted}
     except KeyError:
         raise HTTPException(status_code=404, detail="Not found")
     except Exception as e:
