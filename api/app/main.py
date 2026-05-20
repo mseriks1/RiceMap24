@@ -8037,6 +8037,10 @@ def list_listings(
     lng: Optional[float] = None,
     radius_km: Optional[float] = 40.0,
 ):
+    # Repair older public kitchens that were created before stable geocoding.
+    # This makes them eligible for map pins and nearest search without manual DB work.
+    _backfill_missing_public_listing_coordinates()
+
     items = db_list_listings(
         q=q,
         cuisine=cuisine,
@@ -8101,6 +8105,8 @@ def map_listings(
     We intentionally do NOT support free-text q here — q is used for list search
     + centering (via /api/geocode).
     """
+    _backfill_missing_public_listing_coordinates()
+
     items = db_list_listings(
         q=None,
         cuisine=cuisine,
@@ -9203,6 +9209,63 @@ def _geocode_listing_if_missing(listing_id: int, item: Optional[dict] = None) ->
             set_listing_coordinates(int(listing_id), float(res["lat"]), float(res["lng"]))
     except Exception:
         pass
+
+
+_COORD_BACKFILL_LAST_TS = 0.0
+
+def _backfill_missing_public_listing_coordinates(limit: int = 40, force: bool = False) -> int:
+    """Best-effort repair for existing staging/live kitchens without map pins.
+
+    Older registrations could be saved without lat/lng before geocoding was
+    stable. Public map and nearest search need coordinates, so we repair a
+    small batch when public listing/map endpoints are used. This is deliberately
+    throttled so normal browsing does not repeatedly call geocoding.
+    """
+    global _COORD_BACKFILL_LAST_TS
+    now_ts = time.time()
+    if not force and (now_ts - _COORD_BACKFILL_LAST_TS) < 300:
+        return 0
+    _COORD_BACKFILL_LAST_TS = now_ts
+
+    ids = []
+    conn = None
+    try:
+        conn = connect(timeout_seconds=5.0)
+        rows = conn.execute(
+            """
+            SELECT id FROM listings
+            WHERE published=1
+              AND plan_active=1
+              AND COALESCE(account_status, 'active') NOT IN ('cancelled','paused','archived','deleted_by_request')
+              AND (lat IS NULL OR lng IS NULL)
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (int(limit or 40),),
+        ).fetchall()
+        ids = [int(r["id"]) for r in rows if r and r["id"] is not None]
+    except Exception:
+        ids = []
+    finally:
+        try:
+            if conn:
+                conn.close()
+        except Exception:
+            pass
+
+    repaired = 0
+    for listing_id in ids:
+        try:
+            item = get_by_id(int(listing_id))
+            before_has = bool(item and item.get("lat") is not None and item.get("lng") is not None)
+            _geocode_listing_if_missing(int(listing_id), item)
+            if not before_has:
+                item2 = get_by_id(int(listing_id))
+                if item2 and item2.get("lat") is not None and item2.get("lng") is not None:
+                    repaired += 1
+        except Exception:
+            continue
+    return repaired
 
 # --- Draft / activation ---
 @app.post("/api/drafts")
