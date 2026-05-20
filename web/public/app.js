@@ -2899,18 +2899,19 @@ function servesLabel(serves){
 
 
 function dishImageEffective(listing, dish){
-  const title = ((dish.name?.en || dish.name?.no || dish.title || '') + '').toLowerCase();
-  const img = dish.image || '';
-  // Maria demo: force images for easier testing (even if DB has older missing values)
+  const title = ((dish?.name?.en || dish?.name?.no || dish?.title || '') + '').toLowerCase();
+  const img = String(dish?.image || '').trim();
+  if (img && (isDemoListing(listing) || !isDemoAssetPath(img))) return img;
+  // Demo rows may still use bundled demo images. Real kitchens must stay blank until
+  // the owner uploads their own food photo.
   if (listing && listing.slug === 'marias-filipino-kusina'){
     if (title.includes('adobo')) return 'assets/dish_adobo_custom.png';
     if (title.includes('lumpia') || title.includes('vårr') || title.includes('värr')) return 'assets/dish_lumpia_custom.png';
     if (title.includes('barkada')) return 'assets/dish_barkada_custom.png';
-    // Also override older placeholder paths if present
     if (img.includes('dish_lumpia')) return 'assets/dish_lumpia_custom.png';
     if (img.includes('dish_family3') || img.includes('dish_barkada')) return 'assets/dish_barkada_custom.png';
   }
-  return img || 'assets/dish_tb_1.jpg';
+  return '';
 }
 
 function dishCropEffective(dish){
@@ -2924,8 +2925,16 @@ function dishCropEffective(dish){
 }
 
 function dishBgStyle(img, dish){
+  const clean = String(img || '').trim();
+  if (!clean) return '';
   const { y, z } = dishCropEffective(dish);
-  return `background-image:url(${assetUrl(img)}); background-position: 50% ${y}%; background-size: ${z}% auto`;
+  return `background-image:url(${assetUrl(clean)}); background-position: 50% ${y}%; background-size: ${z}% auto`;
+}
+
+function dishImageBox(className, img, dish, children=[]){
+  const clean = String(img || '').trim();
+  if (!clean) return imagePlaceholder(className);
+  return el('div', { class: `${className || ''} editableImg`.trim(), style:dishBgStyle(clean, dish) }, children.filter(Boolean));
 }
 
 
@@ -3575,13 +3584,29 @@ function signatureHeroCard(listing){
   const isOwner = !!(state.preview && state.preview.active && state.preview.token);
   const showEdit = isOwner && state.ui.editMode;
   const g = buildDishGroupByKey(listing, normalizeDishKey(item));
+  const imageNode = dishImageBox('sig-hero-img', img, item, [
+    showEdit ? el('div', { class:'editBadge', title: (state.lang==='no' ? 'Rediger bilde' : 'Edit image') }, ['✏️']) : null
+  ]);
   return el('button', { class:'sig-hero', onclick: ()=>{ if (g) openDishOptions(listing, g); } }, [
-    el('div', { class:'sig-hero-img editableImg', style:dishBgStyle(img, item) }, [
-      showEdit ? el('div', { class:'editBadge', title: (state.lang==='no' ? 'Rediger bilde' : 'Edit image') }, ['✏️']) : null
-    ].filter(Boolean)),
+    imageNode,
     el('div', { class:'sig-hero-body' }, [
       el('div', { class:'sig-hero-k' }, [title]),
       el('div', { class:'sig-hero-n' }, [name]),
+    ])
+  ]);
+}
+
+function signaturePhotoCard(listing){
+  const img = signatureImagePath(listing);
+  if (!img) return null;
+  // If a signature dish exists, signatureHeroCard already shows a stronger food-first block.
+  const hasSignatureDish = (listing.menu||[]).some(m => (m.tags||[]).includes('signature'));
+  if (hasSignatureDish) return null;
+  return el('div', { class:'sig-hero signature-photo-card' }, [
+    el('div', { class:'sig-hero-img', style:`background-image:url(${assetUrl(img)}); background-position:center; background-size:cover` }, []),
+    el('div', { class:'sig-hero-body' }, [
+      el('div', { class:'sig-hero-k' }, [state.lang==='no' ? 'Signaturbilde' : 'Signature image']),
+      el('div', { class:'sig-hero-n' }, [state.lang==='no' ? 'Et bilde fra kjøkkenet' : 'A photo from the kitchen'])
     ])
   ]);
 }
@@ -3597,9 +3622,9 @@ function signatureSection(listing){
       (()=>{
         const g = buildDishGroupByKey(listing, normalizeDishKey(m));
         return el('button', { class:'sigcard', onclick: ()=>{ if (g) openDishOptions(listing, g); } }, [
-          el('div', { class:'sigimg editableImg', style:dishBgStyle(dishImageEffective(listing, m), m) }, [
+          dishImageBox('sigimg', dishImageEffective(listing, m), m, [
             showEdit ? el('div', { class:'editBadge', title: (state.lang==='no' ? 'Rediger bilde' : 'Edit image') }, ['✏️']) : null
-          ].filter(Boolean)),
+          ]),
         el('div', { class:'sigbody' }, [
           el('div', { class:'sigtitle' }, [m.name?.[state.lang] || m.name?.en || m.title || '']),
         ])
@@ -3620,9 +3645,9 @@ function groupSetsSection(listing){
       (()=>{
         const g = buildDishGroupByKey(listing, normalizeDishKey(m));
         return el('button', { class:'sigcard', onclick: ()=>{ if (g) openDishOptions(listing, g); } }, [
-          el('div', { class:'sigimg editableImg', style:dishBgStyle(dishImageEffective(listing, m), m) }, [
+          dishImageBox('sigimg', dishImageEffective(listing, m), m, [
             showEdit ? el('div', { class:'editBadge', title: (state.lang==='no' ? 'Rediger bilde' : 'Edit image') }, ['✏️']) : null
-          ].filter(Boolean)),
+          ]),
         el('div', { class:'sigbody' }, [
           el('div', { class:'sigtitle' }, [m.name?.[state.lang] || m.name?.en || m.title || '']),
           el('div', { class:'muted small' }, [state.lang==='no' ? 'For 6–8 personer' : 'Serves 6–8']),
@@ -3796,6 +3821,7 @@ function pageCook(listing){
         ]),
         intro ? el('p', { class:'lead', style:'margin-top:10px' }, [intro]) : null,
         signatureHeroCard(listing),
+        signaturePhotoCard(listing),
       ].filter(Boolean))
     ]),
     // FOOD FIRST: Hero signature + Menu high on the page
@@ -6869,11 +6895,22 @@ const Y = {
                     if (!f) return;
                     try{
                       const url = await uploadFor('dish', idx, f);
+                      const groupKey = normalizeDishKey(item);
+                      (d.menu||[]).forEach((m)=>{
+                        if (normalizeDishKey(m) === groupKey) m.image = url;
+                      });
                       item.image = url;
                       render();
                       await autoSaveAfterImageChange();
                     }catch(err){ alert(kitchenEditText('uploadFailed') + ': ' + (err.message||err)); }
                   }),
+                  img ? button(state.lang==='no' ? 'Fjern bilde' : 'Remove image', { variant:'outline', onclick: async ()=>{
+                    const groupKey = normalizeDishKey(item);
+                    (d.menu||[]).forEach((m)=>{ if (normalizeDishKey(m) === groupKey) m.image = ''; });
+                    item.image = '';
+                    render();
+                    await autoSaveAfterImageChange();
+                  }}) : null,
                   el('div',{class:'muted small', style:'margin-top:6px'},[kitchenEditText('squareTip')])
                 ])
               ]);
@@ -7410,7 +7447,8 @@ const Y = {
                     await autoSaveAfterImageChange();
                     render();
                   }catch(err){ alert(kitchenEditText('uploadFailed') + ': ' + (err.message||err)); }
-                }, 'margin-top:8px')
+                }, 'margin-top:8px'),
+                currentHero ? button(state.lang==='no' ? 'Fjern bilde' : 'Remove image', { variant:'outline', onclick: async ()=>{ d.hero_image=''; await autoSaveAfterImageChange(); render(); } }) : null
               ]);
             })(),
             el('div', { class:'muted small', style:'margin-top:10px' }, [kitchenEditText('frontImage')]),
@@ -7501,7 +7539,8 @@ const Y = {
                     await autoSaveAfterImageChange();
                     render();
                   }catch(err){ alert(kitchenEditText('uploadFailed') + ': ' + (err.message||err)); }
-                }, 'margin-top:8px')
+                }, 'margin-top:8px'),
+                currentSig ? button(state.lang==='no' ? 'Fjern bilde' : 'Remove image', { variant:'outline', onclick: async ()=>{ d.signature_image=''; await autoSaveAfterImageChange(); render(); } }) : null
               ]);
             })()
           ]),
