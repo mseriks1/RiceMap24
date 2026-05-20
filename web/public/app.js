@@ -1116,7 +1116,9 @@ function assetUrl(p){
 // To avoid "missing image" in Explore + dashboard previews, normalize to a real default.
 function isDemoListing(listing){
   if(!listing || typeof listing !== 'object') return false;
-  return !!listing.is_demo || String(listing.listing_type || '').trim().toLowerCase() === 'demo';
+  if(!!listing.is_demo || String(listing.listing_type || '').trim().toLowerCase() === 'demo') return true;
+  const slug = String(listing.slug || '').trim().toLowerCase();
+  return ['marias-filipino-kusina','linh-viet-kitchen','noks-thai-corner'].includes(slug);
 }
 
 function safeHeroPath(p, listing=null){

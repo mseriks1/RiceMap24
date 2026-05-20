@@ -2429,7 +2429,7 @@ def init_db() -> None:
         conn.executescript(SCHEMA_SQL)
         conn.commit()
         _migrate(conn)
-        cleanup_real_listing_demo_images(conn)
+        sync_seed_demo_listings(conn)
         conn.commit()
     finally:
         conn.close()
@@ -2781,6 +2781,67 @@ def cleanup_real_listing_demo_images(conn: sqlite3.Connection) -> int:
             continue
     return changed
 
+
+def sync_seed_demo_listings(conn: sqlite3.Connection) -> int:
+    """Keep the built-in demo/test kitchens as demo rows with their bundled images.
+
+    Step 9.70 removed bundled asset images too broadly. Real/new kitchens must still
+    start without images, but the three built-in Explore demo kitchens should keep
+    their example photos. This function only touches known seed slugs from data.py.
+    It does not affect owner-created kitchens, even if their names contain "test".
+    """
+    try:
+        from .data import LISTINGS as seed_listings
+    except Exception:
+        return 0
+    changed = 0
+    for seed in seed_listings:
+        try:
+            slug = str(seed.get("slug") or "").strip()
+            if not slug:
+                continue
+            row = conn.execute("SELECT id FROM listings WHERE slug=?", (slug,)).fetchone()
+            if not row:
+                continue
+            demo = json.loads(json.dumps(seed, ensure_ascii=False))
+            demo["is_demo"] = True
+            demo["listing_type"] = "demo"
+            demo.setdefault("published", 1)
+            demo.setdefault("plan_active", 1)
+            demo.setdefault("account_status", "active")
+            demo.setdefault("paid_status", "paid")
+            demo.setdefault("access_type", "internal")
+            cuisines_json = json.dumps(demo.get("cuisines", []), ensure_ascii=False)
+            badges_json = json.dumps(demo.get("badges", []), ensure_ascii=False)
+            conn.execute(
+                """UPDATE listings SET
+                   name=?, area=?, city=?, country=?, postcode=?, cuisines=?, badges=?,
+                   from_price=?, currency=?, hero_image=?, is_demo=1, listing_type='demo',
+                   lat=?, lng=?, published=1, plan_active=1, account_status='active',
+                   data_json=?, updated_at=datetime('now')
+                   WHERE slug=?""",
+                (
+                    demo.get("name", ""),
+                    demo.get("area", ""),
+                    demo.get("city", ""),
+                    demo.get("country", ""),
+                    demo.get("postcode", ""),
+                    cuisines_json,
+                    badges_json,
+                    demo.get("from_price"),
+                    demo.get("currency"),
+                    demo.get("hero_image"),
+                    demo.get("lat"),
+                    demo.get("lng"),
+                    json.dumps(demo, ensure_ascii=False),
+                    slug,
+                ),
+            )
+            changed += 1
+        except Exception:
+            continue
+    return changed
+
 def seed_if_empty(seed_listings: List[Dict[str, Any]]) -> None:
     conn = connect()
     try:
@@ -2793,7 +2854,12 @@ def seed_if_empty(seed_listings: List[Dict[str, Any]]) -> None:
         if c > 0:
             return
         for item in seed_listings:
-            upsert_listing(conn, item, published=1, plan_active=1, pending_activation=0)
+            demo_item = json.loads(json.dumps(item, ensure_ascii=False))
+            demo_item["is_demo"] = True
+            demo_item["listing_type"] = "demo"
+            demo_item.setdefault("access_type", "internal")
+            demo_item.setdefault("paid_status", "paid")
+            upsert_listing(conn, demo_item, published=1, plan_active=1, pending_activation=0)
         conn.commit()
     finally:
         conn.close()
