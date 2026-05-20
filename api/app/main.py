@@ -8393,7 +8393,7 @@ def _dish_key(m: dict) -> str:
 
 @app.post("/api/owner/{token}/dish_crop")
 async def owner_patch_dish_crop(token: str, payload: dict):
-    """Patch dish image crop (zoom + focal Y) for a dish group by dish_key.
+    """Patch dish image crop (zoom + focal X/Y) for a dish group by dish_key.
 
     This avoids overwriting other listing edits by only modifying menu image crop fields.
     """
@@ -8403,6 +8403,10 @@ async def owner_patch_dish_crop(token: str, payload: dict):
     if not dish_key:
         raise HTTPException(status_code=400, detail="dish_key is required")
     try:
+        focal_x = float((payload or {}).get("image_focal_x", 50))
+    except Exception:
+        focal_x = 50.0
+    try:
         focal_y = float((payload or {}).get("image_focal_y", 50))
     except Exception:
         focal_y = 50.0
@@ -8411,6 +8415,7 @@ async def owner_patch_dish_crop(token: str, payload: dict):
     except Exception:
         zoom = 120.0
 
+    focal_x = max(0.0, min(100.0, focal_x))
     focal_y = max(0.0, min(100.0, focal_y))
     zoom = max(100.0, min(200.0, zoom))
 
@@ -8424,6 +8429,7 @@ async def owner_patch_dish_crop(token: str, payload: dict):
         if not isinstance(m, dict):
             continue
         if _dish_key(m) == dish_key:
+            m["image_focal_x"] = focal_x
             m["image_focal_y"] = focal_y
             m["image_zoom"] = zoom
             changed = True

@@ -2870,6 +2870,7 @@ function buildDishGroupByKey(listing, dishKey){
     .map(x=>({ serves:x.serves, price:x.price, note:x.note?.[state.lang] || x.note?.en || '' }));
 
   const ingredientsSource = (matches.map(x=>x.m).find(x=>x.ingredients) || null);
+  const ix = (rep.image_focal_x==null || isNaN(Number(rep.image_focal_x))) ? 50 : Number(rep.image_focal_x);
   const iy = (rep.image_focal_y==null || isNaN(Number(rep.image_focal_y))) ? 50 : Number(rep.image_focal_y);
   const iz = (rep.image_zoom==null || isNaN(Number(rep.image_zoom))) ? 120 : Number(rep.image_zoom);
 
@@ -2882,6 +2883,7 @@ function buildDishGroupByKey(listing, dishKey){
     options,
     ingredientsSource,
     repIndex: repEntry.idx,
+    image_focal_x: ix,
     image_focal_y: iy,
     image_zoom: iz,
     sectionLabel: menuSectionLabelForItem(rep),
@@ -2919,16 +2921,17 @@ function dishCropEffective(dish){
   // Defaults are slightly zoomed-in to reduce "air" for food photos.
   const clamp = (v)=>Math.max(0, Math.min(100, Number(v)));
   const clampZoom = (v)=>Math.max(100, Math.min(200, Number(v)));
+  const x = clamp(dish?.image_focal_x==null ? 50 : dish.image_focal_x);
   const y = clamp(dish?.image_focal_y==null ? 50 : dish.image_focal_y);
   const z = clampZoom(dish?.image_zoom==null ? 120 : dish.image_zoom);
-  return { y, z };
+  return { x, y, z };
 }
 
 function dishBgStyle(img, dish){
   const clean = String(img || '').trim();
   if (!clean) return '';
-  const { y, z } = dishCropEffective(dish);
-  return `background-image:url(${assetUrl(clean)}); background-position: 50% ${y}%; background-size: ${z}% auto`;
+  const { x, y, z } = dishCropEffective(dish);
+  return `background-image:url(${assetUrl(clean)}); background-position: ${x}% ${y}%; background-size: ${z}% auto`;
 }
 
 function dishImageBox(className, img, dish, children=[]){
@@ -3187,6 +3190,7 @@ function openDishOptions(listing, group){
   const clamp = (v)=>Math.max(0, Math.min(100, Number(v)));
   const clampZoom = (v)=>Math.max(100, Math.min(200, Number(v)));
   const isOwnerPreview = !!(state.preview && state.preview.active && state.preview.token);
+  let dishFocalX = clamp(group.image_focal_x==null?50:group.image_focal_x);
   let dishFocalY = clamp(group.image_focal_y==null?50:group.image_focal_y);
   let dishZoom = clampZoom(group.image_zoom==null?120:group.image_zoom);
 
@@ -3198,7 +3202,7 @@ function openDishOptions(listing, group){
       ]),
       el('div', { class:'modal-body' }, [
         img ? (()=>{
-          const n = el('div', { class:'dish-modal-img', style:`background-image:url(${assetUrl(img)}); background-position: 50% ${dishFocalY}%; background-size: ${dishZoom}% auto` });
+          const n = el('div', { class:'dish-modal-img', style:`background-image:url(${assetUrl(img)}); background-position: ${dishFocalX}% ${dishFocalY}%; background-size: ${dishZoom}% auto` });
           return n;
         })() : null,
         desc ? el('div', { class:'muted', style:'margin-top:10px' }, [desc]) : null,
@@ -3210,8 +3214,22 @@ function openDishOptions(listing, group){
 
         // Owner-only: image crop editor for dish photos (affects thumbnails + modal)
         (isOwnerPreview && state.ui.editMode && img ? (()=>{
+          const focalXVal = el('span', { class:'muted small' }, [String(dishFocalX) + '%']);
           const focalVal = el('span', { class:'muted small' }, [String(dishFocalY) + '%']);
           const zoomVal = el('span', { class:'muted small' }, [String(dishZoom) + '%']);
+
+          const focalXRange = el('input', {
+            type:'range', min:0, max:100,
+            value: String(dishFocalX),
+            class:'focalRange',
+            oninput:(e)=>{
+              const v = clamp(e.target.value||50);
+              dishFocalX = v;
+              const imgEl = overlay.querySelector('.dish-modal-img');
+              if (imgEl) imgEl.style.backgroundPosition = `${dishFocalX}% ${dishFocalY}%`;
+              focalXVal.textContent = String(v) + '%';
+            }
+          });
 
           const focalRange = el('input', {
             type:'range', min:0, max:100,
@@ -3221,7 +3239,7 @@ function openDishOptions(listing, group){
               const v = clamp(e.target.value||50);
               dishFocalY = v;
               const imgEl = overlay.querySelector('.dish-modal-img');
-              if (imgEl) imgEl.style.backgroundPosition = `50% ${v}%`;
+              if (imgEl) imgEl.style.backgroundPosition = `${dishFocalX}% ${dishFocalY}%`;
               focalVal.textContent = String(v) + '%';
             }
           });
@@ -3242,7 +3260,8 @@ function openDishOptions(listing, group){
           const saveBtn = button(state.lang==='no' ? 'Lagre bilde-snitt' : 'Save crop', {
             variant:'primary',
             onclick: async()=>{
-              await ownerSaveDishCrop(state.preview.token, group.key, dishFocalY, dishZoom);
+              await ownerSaveDishCrop(state.preview.token, group.key, dishFocalX, dishFocalY, dishZoom);
+              group.image_focal_x = dishFocalX;
               group.image_focal_y = dishFocalY;
               group.image_zoom = dishZoom;
               overlay.remove();
@@ -3252,15 +3271,18 @@ function openDishOptions(listing, group){
           const resetBtn = button(state.lang==='no' ? 'Nullstill' : 'Reset', {
             variant:'outline',
             onclick: ()=>{
+              dishFocalX = 50;
               dishFocalY = 50;
               dishZoom = 120;
               const imgEl = overlay.querySelector('.dish-modal-img');
               if (imgEl){
-                imgEl.style.backgroundPosition = `50% ${dishFocalY}%`;
+                imgEl.style.backgroundPosition = `${dishFocalX}% ${dishFocalY}%`;
                 imgEl.style.backgroundSize = `${dishZoom}% auto`;
               }
+              focalXRange.value = String(dishFocalX);
               focalRange.value = String(dishFocalY);
               zoomRange.value = String(dishZoom);
+              focalXVal.textContent = String(dishFocalX) + '%';
               focalVal.textContent = String(dishFocalY) + '%';
               zoomVal.textContent = String(dishZoom) + '%';
             }
@@ -3274,6 +3296,12 @@ function openDishOptions(listing, group){
             el('div', { class:'muted small', style:'margin-top:6px' }, [state.lang==='no'
               ? 'Tips: Zoom inn til retten fyller rammen, og flytt litt opp/ned.'
               : 'Tip: Zoom in so the dish fills the frame, then adjust up/down.'
+            ]),
+            el('div', { class:'muted small', style:'margin-top:10px' }, [state.lang==='no' ? 'Venstre/Høyre' : 'Left/Right']),
+            focalXRange,
+            el('div', { class:'row', style:'justify-content:space-between; margin-top:4px' }, [
+              el('span', { class:'muted small' }, [state.lang==='no' ? 'Vannrett posisjon' : 'Horizontal position']),
+              focalXVal,
             ]),
             el('div', { class:'muted small', style:'margin-top:10px' }, [state.lang==='no' ? 'Opp/Ned' : 'Up/Down']),
             focalRange,
@@ -3501,6 +3529,7 @@ function menuSection(listing){
     }));
 
     const ingredientsSource = (g.entries.map(x=>x.item).find(x=>x.ingredients) || null);
+    const ix = (rep.image_focal_x==null || isNaN(Number(rep.image_focal_x))) ? 50 : Number(rep.image_focal_x);
     const iy = (rep.image_focal_y==null || isNaN(Number(rep.image_focal_y))) ? 50 : Number(rep.image_focal_y);
     const iz = (rep.image_zoom==null || isNaN(Number(rep.image_zoom))) ? 120 : Number(rep.image_zoom);
     const sectionMeta = menuSectionMetaForItem(rep, { fallbackLabel: fallbackSectionLabel });
@@ -3514,6 +3543,7 @@ function menuSection(listing){
       options,
       ingredientsSource,
       repIndex: repEntry?.idx ?? null,
+      image_focal_x: ix,
       image_focal_y: iy,
       image_zoom: iz,
       firstIndex: g.firstIndex,
@@ -3543,12 +3573,13 @@ function menuSection(listing){
   const makeCard = (g) => {
     const clamp = (v)=>Math.max(0, Math.min(100, Number(v)));
     const clampZoom = (v)=>Math.max(100, Math.min(200, Number(v)));
+    const x = clamp(g.image_focal_x==null?50:g.image_focal_x);
     const y = clamp(g.image_focal_y==null?50:g.image_focal_y);
     const z = clampZoom(g.image_zoom==null?120:g.image_zoom);
     const isOwner = !!(state.preview && state.preview.active && state.preview.token);
     const showEdit = isOwner && state.ui.editMode;
     return el('button', { class:'menu-card', onclick: ()=>openDishOptions(listing, g) }, [
-      el('div', { class:'menu-img editableImg', style:`background-image:url(${assetUrl(g.image)}); background-position: 50% ${y}%; background-size: ${z}% auto` }, [
+      el('div', { class:'menu-img editableImg', style:`background-image:url(${assetUrl(g.image)}); background-position: ${x}% ${y}%; background-size: ${z}% auto` }, [
         showEdit ? el('div', { class:'editBadge', title: (state.lang==='no' ? 'Rediger bilde' : 'Edit image') }, ['✏️']) : null
       ].filter(Boolean)),
     el('div', { class:'menu-body' }, [
@@ -6868,6 +6899,22 @@ const Y = {
         el('option', { value:'custom', selected:sectionKey==='custom' }, [kitchenEditText('customHeading')])
       ]);
 
+      const clampPct = (v)=>Math.max(0, Math.min(100, Number(v)));
+      const clampDishZoom = (v)=>Math.max(100, Math.min(200, Number(v)));
+      if (item.image_focal_x==null || isNaN(Number(item.image_focal_x))) item.image_focal_x = 50;
+      if (item.image_focal_y==null || isNaN(Number(item.image_focal_y))) item.image_focal_y = 50;
+      if (item.image_zoom==null || isNaN(Number(item.image_zoom))) item.image_zoom = 120;
+      const applyDishCropToGroup = (patch)=>{
+        const groupKey = normalizeDishKey(item);
+        (d.menu||[]).forEach((m)=>{
+          if (normalizeDishKey(m) === groupKey){
+            if (patch.image_focal_x !== undefined) m.image_focal_x = patch.image_focal_x;
+            if (patch.image_focal_y !== undefined) m.image_focal_y = patch.image_focal_y;
+            if (patch.image_zoom !== undefined) m.image_zoom = patch.image_zoom;
+          }
+        });
+      };
+
       return el('div',{class:'card', style:'margin-bottom:12px'},[
         el('div',{class:'row', style:'gap:10px; align-items:flex-start; flex-wrap:wrap'},[
           el('div',{style:'flex:1; min-width:260px'},[
@@ -6885,8 +6932,58 @@ const Y = {
             ].filter(Boolean))),
             field(kitchenEditText('ingredients'), el('textarea',{class:'input', rows:3, value:item.ingredients||'', oninput:(e)=>{ item.ingredients=e.target.value; }})),
             (()=>{
-              const thumb = img ? el('img',{class:'imgThumb', src: assetUrl(img)}) : imagePlaceholder('imgThumb');
-              return el('div',{class:'row', style:'gap:10px; margin-top:10px; align-items:center; flex-wrap:wrap'},[
+              const currentImg = (item.image || '').trim();
+              const thumb = currentImg
+                ? el('div',{
+                    class:'imgThumb',
+                    style:`background-image:url(${assetUrl(currentImg)}); background-position:${clampPct(item.image_focal_x)}% ${clampPct(item.image_focal_y)}%; background-size:${clampDishZoom(item.image_zoom)}% auto; background-repeat:no-repeat; background-color:#f5f1ec;`
+                  })
+                : imagePlaceholder('imgThumb');
+              const updateThumb = ()=>{
+                if (!currentImg || !thumb || !thumb.style) return;
+                thumb.style.backgroundPosition = `${clampPct(item.image_focal_x)}% ${clampPct(item.image_focal_y)}%`;
+                thumb.style.backgroundSize = `${clampDishZoom(item.image_zoom)}% auto`;
+              };
+              const cropControls = (state.ui.editMode && currentImg) ? el('div', { class:'card', style:'margin-top:10px; padding:10px; background:#fffaf4' }, [
+                el('div', { class:'muted small', style:'font-weight:700; margin-bottom:6px' }, [state.lang==='no' ? 'Bildeutsnitt' : 'Image crop']),
+                el('div', { class:'muted small' }, [state.lang==='no' ? 'Venstre/høyre' : 'Left/right']),
+                el('input', { type:'range', min:0, max:100, value:String(clampPct(item.image_focal_x)), class:'focalRange', oninput:(e)=>{
+                  const v = clampPct(e.target.value||50);
+                  applyDishCropToGroup({image_focal_x:v});
+                  item.image_focal_x = v;
+                  updateThumb();
+                }}),
+                el('div', { class:'muted small', style:'margin-top:8px' }, [state.lang==='no' ? 'Opp/ned' : 'Up/down']),
+                el('input', { type:'range', min:0, max:100, value:String(clampPct(item.image_focal_y)), class:'focalRange', oninput:(e)=>{
+                  const v = clampPct(e.target.value||50);
+                  applyDishCropToGroup({image_focal_y:v});
+                  item.image_focal_y = v;
+                  updateThumb();
+                }}),
+                el('div', { class:'muted small', style:'margin-top:8px' }, ['Zoom']),
+                el('input', { type:'range', min:100, max:200, value:String(clampDishZoom(item.image_zoom)), class:'focalRange', oninput:(e)=>{
+                  const v = clampDishZoom(e.target.value||120);
+                  applyDishCropToGroup({image_zoom:v});
+                  item.image_zoom = v;
+                  updateThumb();
+                }}),
+                el('div', { class:'row', style:'gap:8px; margin-top:8px; flex-wrap:wrap' }, [
+                  button(state.lang==='no' ? 'Lagre bildeutsnitt' : 'Save crop', { variant:'primary', onclick: async ()=>{
+                    applyDishCropToGroup({ image_focal_x: clampPct(item.image_focal_x), image_focal_y: clampPct(item.image_focal_y), image_zoom: clampDishZoom(item.image_zoom) });
+                    await autoSaveAfterImageChange();
+                  }}),
+                  button(state.lang==='no' ? 'Nullstill' : 'Reset', { variant:'outline', onclick: async ()=>{
+                    applyDishCropToGroup({ image_focal_x:50, image_focal_y:50, image_zoom:120 });
+                    item.image_focal_x = 50;
+                    item.image_focal_y = 50;
+                    item.image_zoom = 120;
+                    updateThumb();
+                    await autoSaveAfterImageChange();
+                    render();
+                  }})
+                ])
+              ]) : null;
+              return el('div',{class:'row', style:'gap:10px; margin-top:10px; align-items:flex-start; flex-wrap:wrap'},[
                 thumb,
                 el('div',{style:'flex:1; min-width:220px'},[
                   el('div',{class:'muted small'},[kitchenEditText('dishImage')]),
@@ -6897,22 +6994,31 @@ const Y = {
                       const url = await uploadFor('dish', idx, f);
                       const groupKey = normalizeDishKey(item);
                       (d.menu||[]).forEach((m)=>{
-                        if (normalizeDishKey(m) === groupKey) m.image = url;
+                        if (normalizeDishKey(m) === groupKey){
+                          m.image = url;
+                          if (m.image_focal_x==null) m.image_focal_x = 50;
+                          if (m.image_focal_y==null) m.image_focal_y = 50;
+                          if (m.image_zoom==null) m.image_zoom = 120;
+                        }
                       });
                       item.image = url;
                       render();
                       await autoSaveAfterImageChange();
                     }catch(err){ alert(kitchenEditText('uploadFailed') + ': ' + (err.message||err)); }
                   }),
-                  img ? button(state.lang==='no' ? 'Fjern bilde' : 'Remove image', { variant:'outline', onclick: async ()=>{
+                  currentImg ? button(state.lang==='no' ? 'Fjern bilde' : 'Remove image', { variant:'outline', onclick: async ()=>{
                     const groupKey = normalizeDishKey(item);
                     (d.menu||[]).forEach((m)=>{ if (normalizeDishKey(m) === groupKey) m.image = ''; });
                     item.image = '';
                     render();
                     await autoSaveAfterImageChange();
                   }}) : null,
-                  el('div',{class:'muted small', style:'margin-top:6px'},[kitchenEditText('squareTip')])
-                ])
+                  cropControls,
+                  el('div',{class:'muted small', style:'margin-top:6px'},[state.ui.editMode && currentImg
+                    ? (state.lang==='no' ? 'Bruk sliderne når Edit Photos er på. Utsnittet brukes på kundesiden, kort og printverktøy.' : 'Use the sliders when Edit Photos is on. The crop is used on the public page, cards and print tools.')
+                    : kitchenEditText('squareTip')
+                  ])
+                ].filter(Boolean))
               ]);
             })(),
             el('label', { class:'row', style:'gap:10px; align-items:center; margin-top:10px' }, [
@@ -11959,10 +12065,11 @@ async function ownerUpdateSettings(token, patch={}){
   return await r.json();
 }
 
-async function ownerSaveDishCrop(token, dishKey, focalY, zoom){
-  // Owner-only: patch a dish image crop (zoom + focal Y) without overwriting other unsaved edits.
+async function ownerSaveDishCrop(token, dishKey, focalX, focalY, zoom){
+  // Owner-only: patch a dish image crop (zoom + focal X/Y) without overwriting other unsaved edits.
   const payload = {
     dish_key: String(dishKey||'').trim(),
+    image_focal_x: Number(focalX),
     image_focal_y: Number(focalY),
     image_zoom: Number(zoom),
   };
