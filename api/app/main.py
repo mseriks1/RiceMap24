@@ -9680,10 +9680,17 @@ async def auth_dev_reset_admin(payload: dict, request: Request):
     display_name = str(p.get("display_name") or "Admin").strip() or "Admin"
     try:
         user = reset_admin_app_users(email, password, display_name=display_name)
-        log_admin_activity("auth_admin_reset", actor="system", entity_type="app_user", entity_id=int(user.get("id") or 0), title="Reset local/staging admin login", details={"email": email})
+        # Do not let audit logging break the emergency recovery path. Older
+        # staging databases may have an outdated admin_activity_log schema.
+        try:
+            log_admin_activity("auth_admin_reset", actor="system", entity_type="app_user", entity_id=int(user.get("id") or 0), title="Reset local/staging admin login", details={"email": email})
+        except Exception:
+            pass
         return {"ok": True, "user": user}
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Admin reset failed: {type(exc).__name__}: {str(exc)}")
 
 
 @app.post("/api/auth/logout")

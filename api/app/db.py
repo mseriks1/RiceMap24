@@ -3206,24 +3206,65 @@ def set_listing_coordinates(listing_id: int, lat: Optional[float], lng: Optional
 
 
 def reset_admin_app_users(email: str, password: str, display_name: str = "Admin") -> Dict[str, Any]:
-    """Non-production recovery helper: replace local/staging admin login.
+    """Non-production recovery helper: create or repair the staging admin login.
 
-    This does not affect owner users or listings. It is intentionally available
-    only through the API route, which blocks production.
+    This does not affect owner users or listings. It avoids deleting an account
+    before the replacement is known to exist, which makes the recovery safer on
+    PostgreSQL staging databases with old/partial auth data.
     """
     email_norm = (email or "").strip().lower()
     if not email_norm or "@" not in email_norm:
         raise ValueError("Valid email is required")
     if len(password or "") < 6:
         raise ValueError("Password must be at least 6 characters")
+    pw_hash = hash_password(password)
     conn = connect()
     try:
-        conn.execute("DELETE FROM app_sessions WHERE role='admin'")
-        conn.execute("DELETE FROM app_users WHERE role='admin'")
+        # Make sure auth tables exist even if this route is used after an older
+        # staging database migration. _migrate is idempotent and safe.
+        try:
+            _migrate(conn)
+        except Exception:
+            # If migration fails, continue and let the concrete SQL below return
+            # the real error. Some older migration paths intentionally ignore
+            # duplicate-column errors.
+            pass
+
+        existing = conn.execute("SELECT * FROM app_users WHERE lower(email)=lower(?)", (email_norm,)).fetchone()
+        if existing:
+            admin_id = int(existing["id"])
+            conn.execute(
+                """
+                UPDATE app_users
+                   SET password_hash=?, display_name=?, role='admin', listing_id=NULL,
+                       active=1, email_verified=1, updated_at=datetime('now')
+                 WHERE id=?
+                """,
+                (pw_hash, (display_name or "Admin")[:120], admin_id),
+            )
+        else:
+            cur = conn.execute(
+                """
+                INSERT INTO app_users (email, password_hash, display_name, role, listing_id, active, email_verified, updated_at)
+                VALUES (?, ?, ?, 'admin', NULL, 1, 1, datetime('now'))
+                """,
+                (email_norm, pw_hash, (display_name or "Admin")[:120]),
+            )
+            admin_id = int(cur.lastrowid or 0)
+            if not admin_id:
+                row = conn.execute("SELECT id FROM app_users WHERE lower(email)=lower(?)", (email_norm,)).fetchone()
+                admin_id = int(row["id"]) if row else 0
+
+        # Revoke old admin sessions and deactivate other admin accounts. Do not
+        # delete owner accounts or kitchen/listing data.
+        conn.execute("UPDATE app_sessions SET revoked_at=datetime('now'), updated_at=datetime('now') WHERE role='admin' AND revoked_at IS NULL")
+        if admin_id:
+            conn.execute("UPDATE app_users SET active=0, updated_at=datetime('now') WHERE role='admin' AND id<>?", (admin_id,))
         conn.commit()
+        row = conn.execute("SELECT * FROM app_users WHERE id=?", (admin_id,)).fetchone() if admin_id else None
+        return _user_row_to_dict(row) or {}
     finally:
         conn.close()
-    return create_app_user(email_norm, password, display_name=display_name or "Admin", role="admin", active=True, email_verified=True)
 
 def get_by_preview_token(token: str) -> Optional[Dict[str, Any]]:
     conn = connect()
