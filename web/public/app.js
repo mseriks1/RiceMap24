@@ -1116,9 +1116,21 @@ function assetUrl(p){
 // To avoid "missing image" in Explore + dashboard previews, normalize to a real default.
 function safeHeroPath(p){
   const s = (p || '').trim();
-  if(!s) return 'assets/hero_fusion.jpg';
+  // Empty means the kitchen has not uploaded a photo yet. Do not show demo/test images.
+  if(!s) return '';
+  // Only old demo rows that explicitly reference the removed Maria asset get mapped to a real demo image.
   if(s.includes('hero_maria.jpg')) return 'assets/hero_fusion.jpg';
   return s;
+}
+
+function noPhotoLabel(){
+  return state.lang === 'no' ? 'Ingen bilde lagt til ennå' : 'No photo added yet';
+}
+
+function imagePlaceholder(className){
+  return el('div', { class: `${className || ''} noPhotoPlaceholder`.trim() }, [
+    el('span', {}, [noPhotoLabel()])
+  ]);
 }
 
 function signatureImagePath(listing){
@@ -2357,7 +2369,9 @@ function listingCard(item){
   })();
 
   return el('div', { class:'card' }, [
-    el('div', { class:'card-img', style:`background-image:url(${assetUrl(cardHero)}); background-position: 50% ${Math.max(0, Math.min(100, (item.explore_focal_y==null?50:Number(item.explore_focal_y))))}%; background-size: ${z}% auto`, onclick: ()=>navigate(`/c/${item.slug}`) }),
+    cardHero
+      ? el('div', { class:'card-img', style:`background-image:url(${assetUrl(cardHero)}); background-position: 50% ${Math.max(0, Math.min(100, (item.explore_focal_y==null?50:Number(item.explore_focal_y))))}%; background-size: ${z}% auto`, onclick: ()=>navigate(`/c/${item.slug}`) })
+      : el('div', { class:'card-img noPhotoPlaceholder', onclick: ()=>navigate(`/c/${item.slug}`) }, [el('span', {}, [noPhotoLabel()])]),
     el('div', { class:'card-body' }, [
       el('div', { class:'card-top' }, [
         el('div', { class:'card-title' }, [item.name]),
@@ -3734,7 +3748,9 @@ function pageCook(listing){
 
   const body = el('div', { class:'container cookContainer' }, [
     el('div', { class:'cook-hero' }, [
-      el('div', { class:'cook-img', style:`background-image:url(${assetUrl(safeHeroPath(listing.hero_image))})` }),
+      safeHeroPath(listing.hero_image)
+        ? el('div', { class:'cook-img', style:`background-image:url(${assetUrl(safeHeroPath(listing.hero_image))})` })
+        : imagePlaceholder('cook-img'),
       el('div', { class:'cook-head' }, [
         el('div', { class:'row', style:'justify-content:space-between; align-items:flex-start' }, [
           el('div', {}, [
@@ -6779,7 +6795,7 @@ const Y = {
       const item = d.menu[idx] || (d.menu[idx] = {});
       if (!item.serves) item.serves = 'single';
       if (!item.title && (item.name?.en || item.name?.no)) item.title = (item.name?.[state.lang] || item.name?.en || item.name?.no || '');
-      const img = item.image || 'assets/dish_adobo.jpg';
+      const img = (item.image || '').trim();
 
       const servesSelect = el('select',{class:'input', value:item.serves, onchange:(e)=>{ item.serves=e.target.value; render(); }},[
         el('option',{value:'single', selected:item.serves==='single'},[kitchenEditText('servesSingle')]),
@@ -6814,7 +6830,7 @@ const Y = {
             ].filter(Boolean))),
             field(kitchenEditText('ingredients'), el('textarea',{class:'input', rows:3, value:item.ingredients||'', oninput:(e)=>{ item.ingredients=e.target.value; }})),
             (()=>{
-              const thumb = el('img',{class:'imgThumb', src: assetUrl(img)});
+              const thumb = img ? el('img',{class:'imgThumb', src: assetUrl(img)}) : imagePlaceholder('imgThumb');
               return el('div',{class:'row', style:'gap:10px; margin-top:10px; align-items:center; flex-wrap:wrap'},[
                 thumb,
                 el('div',{style:'flex:1; min-width:220px'},[
@@ -6825,7 +6841,7 @@ const Y = {
                     try{
                       const url = await uploadFor('dish', idx, f);
                       item.image = url;
-                      thumb.src = assetUrl(url);
+                      render();
                       await autoSaveAfterImageChange();
                     }catch(err){ alert(kitchenEditText('uploadFailed') + ': ' + (err.message||err)); }
                   }),
@@ -7351,7 +7367,8 @@ const Y = {
         el('div', { class:'grid2', style:'margin-top:12px' }, [
           el('div', {}, [
             (()=>{
-              const heroImg = el('img', { class:'imgWide', src: assetUrl(safeHeroPath(d.hero_image)), alt:'hero' });
+              const currentHero = safeHeroPath(d.hero_image);
+              const heroImg = currentHero ? el('img', { class:'imgWide', src: assetUrl(currentHero), alt:'hero' }) : imagePlaceholder('imgWide');
               return el('div', {}, [
                 el('div', { class:'muted small' }, [kitchenEditText('hero')]),
                 heroImg,
@@ -7361,8 +7378,8 @@ const Y = {
                   try{
                     const url = await uploadFor('hero', null, f);
                     d.hero_image = url;
-                    heroImg.src = assetUrl(safeHeroPath(url));
                     await autoSaveAfterImageChange();
+                    render();
                   }catch(err){ alert(kitchenEditText('uploadFailed') + ': ' + (err.message||err)); }
                 }, 'margin-top:8px')
               ]);
@@ -7377,10 +7394,13 @@ const Y = {
               if (d.explore_zoom==null || isNaN(Number(d.explore_zoom))) d.explore_zoom = 120;
               // IMPORTANT: make the preview use the exact same markup+CSS as Explore cards
               // so the crop looks identical (same width rules + same height).
-              const previewImg = el('div', {
-                class:'card-img focalCardImg',
-                style:`background-image:url(${assetUrl(safeHeroPath(d.hero_image))}); background-position: 50% ${clamp(d.explore_focal_y)}%; background-size: ${clampZoom(d.explore_zoom)}% auto`
-              });
+              const currentHeroForPreview = safeHeroPath(d.hero_image);
+              const previewImg = currentHeroForPreview
+                ? el('div', {
+                    class:'card-img focalCardImg',
+                    style:`background-image:url(${assetUrl(currentHeroForPreview)}); background-position: 50% ${clamp(d.explore_focal_y)}%; background-size: ${clampZoom(d.explore_zoom)}% auto`
+                  })
+                : el('div', { class:'card-img focalCardImg noPhotoPlaceholder' }, [el('span', {}, [noPhotoLabel()])]);
               const preview = el('div', { class:'focalCardWrap' }, [
                 el('div', { class:'card focalCard' }, [previewImg])
               ]);
@@ -7438,7 +7458,8 @@ const Y = {
           ]),
           el('div', {}, [
             (()=>{
-              const sigImg = el('img', { class:'imgWide', src: assetUrl(signatureImagePath(d) || 'assets/hero_fusion.jpg'), alt:'signature' });
+              const currentSig = signatureImagePath(d);
+              const sigImg = currentSig ? el('img', { class:'imgWide', src: assetUrl(currentSig), alt:'signature' }) : imagePlaceholder('imgWide');
               return el('div', {}, [
                 el('div', { class:'muted small' }, [kitchenEditText('signature')]),
                 sigImg,
@@ -7448,8 +7469,8 @@ const Y = {
                   try{
                     const url = await uploadFor('signature', null, f);
                     d.signature_image = url;
-                    sigImg.src = assetUrl(url);
                     await autoSaveAfterImageChange();
+                    render();
                   }catch(err){ alert(kitchenEditText('uploadFailed') + ': ' + (err.message||err)); }
                 }, 'margin-top:8px')
               ]);
@@ -7473,7 +7494,7 @@ const Y = {
               alert(kitchenEditText('maxDishes'));
               return;
             }
-            d.menu.push({ title: kitchenEditText('newDish'), serves:'single', price: 0, image:'assets/dish_adobo.jpg', ingredients:'', sold_out:false });
+            d.menu.push({ title: kitchenEditText('newDish'), serves:'single', price: 0, image:'', ingredients:'', sold_out:false });
             render();
           }
         }),

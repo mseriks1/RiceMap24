@@ -246,6 +246,22 @@ button,input,select,textarea{font-family:inherit;}
   background-color: var(--soft);
 }
 @media (min-width:900px){ .card-img{height:160px;} }
+
+.noPhotoPlaceholder{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#f5f1ec;
+  color:#6b7280;
+  border-color:#eadfd3;
+  text-align:center;
+}
+.noPhotoPlaceholder span{
+  display:inline-block;
+  padding:8px 10px;
+  font-size:13px;
+  font-weight:650;
+}
 .card-body{padding:12px 12px 14px;}
 .card-name{font-weight:600; margin:0; font-size:15px; letter-spacing:-.2px;}
 .card-loc{margin:4px 0 10px; color:var(--muted); font-size:13px;}
