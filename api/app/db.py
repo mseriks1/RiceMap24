@@ -2429,6 +2429,7 @@ def init_db() -> None:
         conn.executescript(SCHEMA_SQL)
         conn.commit()
         _migrate(conn)
+        cleanup_real_listing_demo_images(conn)
         conn.commit()
     finally:
         conn.close()
@@ -2491,6 +2492,7 @@ def row_to_listing(row: sqlite3.Row) -> Dict[str, Any]:
     created_at = row["created_at"] if "created_at" in keys else item.get("created_at")
     item["created_at"] = created_at or item.get("created_at") or ""
     item["joined_at"] = item.get("joined_at") or created_at or ""
+    sanitize_non_demo_listing_images(item)
     return item
 
 
@@ -2701,6 +2703,84 @@ def validate_plan_limits(listing: Dict[str, Any], plan: str) -> None:
             f"Plan limit: {p} allows max {max_dishes} dishes, but you have {count}. Remove {count-max_dishes} dish(es) or upgrade."
         )
 
+DEMO_IMAGE_MARKERS = (
+    "assets/hero_",
+    "assets/dish_",
+    "hero_fusion",
+    "dish_adobo",
+    "filipino",
+    "thai",
+    "viet",
+    "barkada",
+    "lumpia",
+)
+
+
+def _is_demo_asset_path(value: Any) -> bool:
+    raw = str(value or "").strip().lstrip("/").lower()
+    if not raw or not raw.startswith("assets/"):
+        return False
+    return any(marker in raw for marker in DEMO_IMAGE_MARKERS)
+
+
+def _listing_is_demo(listing: Dict[str, Any]) -> bool:
+    if bool(listing.get("is_demo", False)):
+        return True
+    return str(listing.get("listing_type") or "").strip().lower() == "demo"
+
+
+def sanitize_non_demo_listing_images(listing: Dict[str, Any]) -> Dict[str, Any]:
+    """Remove bundled demo/test image assets from real kitchen records.
+
+    Uploaded user images live outside /assets, normally under /uploads. Demo listings may
+    keep bundled assets. Real listings must start blank until the owner uploads images.
+    """
+    if not isinstance(listing, dict) or _listing_is_demo(listing):
+        return listing
+    for key in ("hero_image", "signature_image", "signature_photo", "image", "photo"):
+        if _is_demo_asset_path(listing.get(key)):
+            listing[key] = ""
+    menu = listing.get("menu")
+    if isinstance(menu, list):
+        for item in menu:
+            if not isinstance(item, dict):
+                continue
+            for key in ("image", "photo", "img", "hero_image"):
+                if _is_demo_asset_path(item.get(key)):
+                    item[key] = ""
+    return listing
+
+
+def cleanup_real_listing_demo_images(conn: sqlite3.Connection) -> int:
+    """One-time/idempotent cleanup for staging rows created before the sanitizer."""
+    changed = 0
+    try:
+        rows = conn.execute(
+            """SELECT id, hero_image, data_json, is_demo, listing_type
+               FROM listings
+               WHERE COALESCE(is_demo,0)=0 AND COALESCE(listing_type,'real') <> 'demo'"""
+        ).fetchall()
+    except Exception:
+        return 0
+    for row in rows:
+        try:
+            data = json.loads(row["data_json"] or "{}")
+            before = json.dumps(data, sort_keys=True, ensure_ascii=False)
+            data["is_demo"] = False
+            data["listing_type"] = str(data.get("listing_type") or "real")
+            sanitize_non_demo_listing_images(data)
+            hero = data.get("hero_image") or ""
+            after = json.dumps(data, sort_keys=True, ensure_ascii=False)
+            if before != after or _is_demo_asset_path(row["hero_image"]):
+                conn.execute(
+                    "UPDATE listings SET hero_image=?, data_json=?, updated_at=datetime('now') WHERE id=?",
+                    (hero, json.dumps(data, ensure_ascii=False), int(row["id"])),
+                )
+                changed += 1
+        except Exception:
+            continue
+    return changed
+
 def seed_if_empty(seed_listings: List[Dict[str, Any]]) -> None:
     conn = connect()
     try:
@@ -2784,6 +2864,11 @@ def upsert_listing(
     accepts_orders_val = 1 if bool(listing.get("accepts_orders", True)) else 0
     show_actor_val = 1 if bool(listing.get("show_in_actor_marketing", True)) else 0
     show_market_val = 1 if bool(listing.get("show_in_customer_marketplace", True)) else 0
+
+    # Do not persist bundled demo/test image assets on real kitchens.
+    listing["is_demo"] = bool(is_demo_val)
+    listing["listing_type"] = listing_type_val
+    sanitize_non_demo_listing_images(listing)
 
     note_val = admin_note if admin_note is not None else listing.get("admin_note", "")
     paid_status_val = (paid_status if paid_status is not None else listing.get("paid_status", "unpaid")) or "unpaid"

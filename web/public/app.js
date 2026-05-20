@@ -1149,7 +1149,26 @@ function signatureImagePath(listing){
     const image = String(item.image || '').trim();
     if(image) return image;
   }
-  return safeHeroPath(listing?.hero_image || '');
+  return '';
+}
+
+function isDemoAssetPath(p){
+  const s = String(p || '').trim().replace(/^\//, '').toLowerCase();
+  if (!s.startsWith('assets/')) return false;
+  return /(^|\/)hero_|(^|\/)dish_|hero_fusion|dish_adobo|filipino|thai|viet|barkada|lumpia/.test(s);
+}
+
+function stripDemoImagesFromListingPayload(obj){
+  if (!obj || typeof obj !== 'object') return obj;
+  ['hero_image','signature_image','signature_photo','image','photo'].forEach((key)=>{
+    if (isDemoAssetPath(obj[key])) obj[key] = '';
+  });
+  const menu = Array.isArray(obj.menu) ? obj.menu : [];
+  menu.forEach((item)=>{
+    if (!item || typeof item !== 'object') return;
+    ['image','photo','img','hero_image'].forEach((key)=>{ if (isDemoAssetPath(item[key])) item[key] = ''; });
+  });
+  return obj;
 }
 
 function fetchWithTimeout(path, options={}, timeoutMs=8000){
@@ -10908,7 +10927,7 @@ function pageList(){
       d.contact.email = (a.email || d.contact.email || '').trim();
       d.billing = d.billing || state.billing || 'monthly';
       d.plan = normalizePlan(d.plan || 'basic');
-      const payload = JSON.parse(JSON.stringify(d));
+      const payload = stripDemoImagesFromListingPayload(JSON.parse(JSON.stringify(d)));
       payload.owner_password = a.password || '';
       payload.owner_name = a.name || '';
       let res;
