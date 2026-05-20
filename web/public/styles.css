@@ -681,7 +681,11 @@ button.sigcard{ width: 100%; }
 .modal-wide{ max-width: 720px; }
 .dish-modal-img{
   width: 100%;
-  height: 260px;
+  /* Match the public menu thumbnail ratio (140x110).
+     This makes the saved X/Y/zoom crop look the same in the card and in the large dish view. */
+  aspect-ratio: 14 / 11;
+  height: auto;
+  max-height: 560px;
   border-radius: var(--rmd);
   background-size: cover;
   background-position: center;
@@ -703,7 +707,7 @@ button.sigcard{ width: 100%; }
   background: #fff;
 }
 @media (max-width: 920px){
-  .dish-modal-img{ height: 200px; }
+  .dish-modal-img{ max-height: 420px; }
   .menu-card .menu-body{ padding: 12px; }
 }
 
