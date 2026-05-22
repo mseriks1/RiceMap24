@@ -14910,8 +14910,10 @@ function pageAdmin(){
       const key = encodeURIComponent(state.admin.key || '');
       await apiJson('POST', adminUrl(`/api/admin/listings/${id}/update`), patch||{});
       await refresh();
+      return true;
     }catch(e){
       alert('Update failed: ' + (e.message||e));
+      return false;
     }
   }
 
@@ -16519,9 +16521,24 @@ el('div', { class:'row', style:'gap:10px; flex-wrap:wrap; margin-top:10px' }, [
     const overrideCount = all.filter(hasAnyOverride).length;
     const expiringPreview = all.filter(isExpiringSoon).slice(0,5);
 
-    function saveAccess(it){
+    function normalizeAccessDateInput(raw){
+      const value = String(raw || '').trim();
+      if (!value) return '';
+      // Browser date inputs return YYYY-MM-DD even when the UI displays local formats.
+      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+      // Be defensive for browsers/locales that may expose DD.MM.YYYY or DD/MM/YYYY.
+      const m = value.match(/^(\d{1,2})[.\/](\d{1,2})[.\/](\d{4})$/);
+      if (m){
+        const dd = String(m[1]).padStart(2,'0');
+        const mm = String(m[2]).padStart(2,'0');
+        return `${m[3]}-${mm}-${dd}`;
+      }
+      return value.slice(0,10);
+    }
+
+    async function saveAccess(it){
       const access_type = document.getElementById('access_type_'+it.id)?.value || 'paid';
-      const access_expires_at = document.getElementById('access_expires_'+it.id)?.value || '';
+      const access_expires_at = normalizeAccessDateInput(document.getElementById('access_expires_'+it.id)?.value || '');
       const access_reason = document.getElementById('access_reason_'+it.id)?.value || '';
       const plan = document.getElementById('access_plan_'+it.id)?.value || normalizePlan(it.plan||'basic');
       const billing = document.getElementById('access_billing_'+it.id)?.value || (it.billing||'monthly');
@@ -16539,7 +16556,10 @@ el('div', { class:'row', style:'gap:10px; flex-wrap:wrap; margin-top:10px' }, [
       const paid_status = access_type === 'paid' ? (it.paid_status || 'unpaid') : 'paid';
       const inactive = ['cancelled','paused','archived','deleted_by_request'].includes(account_status);
       const patch = { account_status, access_type, access_expires_at, access_reason, feature_overrides, plan, billing, paid_status, plan_active: inactive ? 0 : (access_type === 'paid' ? (it.plan_active|0) : 1) };
-      updateMeta(it.id, patch);
+      const ok = await updateMeta(it.id, patch);
+      if (ok) {
+        state.admin.accessSavedMessage = (state.lang==='no'?'Tilgang lagret.':'Access saved.');
+      }
     }
 
     function clearAccess(it){
@@ -16648,8 +16668,12 @@ el('div', { class:'row', style:'gap:10px; flex-wrap:wrap; margin-top:10px' }, [
           ])
         ]),
         el('textarea', { class:'input', id:'access_reason_'+it.id, style:'width:100%; min-height:58px', placeholder:state.lang==='no'?'Årsak/notat, f.eks. testbruker, samarbeid, kompensasjon…':'Reason/note, e.g. test user, partner, compensation…' }, [it.access_reason||'']),
+        el('div', { class:'muted small' }, [state.lang==='no'
+          ? 'Endringer i disse feltene lagres først når du trykker Lagre tilgang.'
+          : 'Changes in these fields are saved only when you click Save access.']),
+        state.admin.accessSavedMessage ? el('div', { class:'small', style:'color:#165c35; font-weight:700' }, [state.admin.accessSavedMessage]) : null,
         el('div', { class:'row', style:'gap:8px; flex-wrap:wrap' }, [
-          button(state.lang==='no'?'Lagre tilgang':'Save access', { variant:'primary', onclick:()=>saveAccess(it) }),
+          button(state.lang==='no'?'Lagre tilgang':'Save access', { variant:'primary', onclick:()=>{ state.admin.accessSavedMessage=''; saveAccess(it); } }),
           button(state.lang==='no'?'Tilbakestill til betalt':'Reset to paid', { variant:'outline', onclick:()=>clearAccess(it) })
         ])
       ]);

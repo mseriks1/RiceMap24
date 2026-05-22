@@ -2509,6 +2509,28 @@ def _date_part(value: Any) -> str:
     return str(value or "").strip()[:10]
 
 
+def _normalize_admin_date(value: Any) -> str:
+    """Normalize admin date input to YYYY-MM-DD.
+
+    Frontend date inputs normally send ISO dates, but admin UIs can show
+    localized dates such as DD.MM.YYYY. Keep the backend tolerant so access
+    expiry saves reliably on Render/PostgreSQL and in local testing.
+    """
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    raw = raw[:20]
+    if re.match(r"^\d{4}-\d{2}-\d{2}$", raw):
+        return raw
+    m = re.match(r"^(\d{1,2})[./](\d{1,2})[./](\d{4})$", raw)
+    if m:
+        dd = m.group(1).zfill(2)
+        mm = m.group(2).zfill(2)
+        yyyy = m.group(3)
+        return f"{yyyy}-{mm}-{dd}"
+    return raw[:10]
+
+
 def _is_date_on_or_after_today(value: Any) -> bool:
     raw = _date_part(value)
     if not raw:
@@ -4031,7 +4053,7 @@ def admin_update_meta(
                 if listing.get("account_status") == "past_due":
                     listing["account_status"] = "active"
         if paid_until is not None:
-            listing["paid_until"] = paid_until
+            listing["paid_until"] = _normalize_admin_date(paid_until)
 
         if account_status is not None:
             allowed_statuses = {"active", "trial", "past_due", "cancelled", "paused", "archived", "deleted_by_request"}
@@ -4064,7 +4086,7 @@ def admin_update_meta(
                 elif listing.get("account_status") in ("cancelled", "paused", "archived", "deleted_by_request"):
                     listing["account_status"] = "active"
         if access_expires_at is not None:
-            listing["access_expires_at"] = str(access_expires_at or "").strip()
+            listing["access_expires_at"] = _normalize_admin_date(access_expires_at)
         if access_reason is not None:
             listing["access_reason"] = str(access_reason or "")[:500]
         if feature_overrides is not None:
