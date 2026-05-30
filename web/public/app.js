@@ -5103,6 +5103,14 @@ const Y = {
                 "inviteShort": "Invite kitchens. Earn credit.",
                 "referralShort": "50% of the first month value. Shown and used in your own account currency.",
                 "openReferral": "Open referral",
+                "referralExample": "Example: if you refer 2 kitchens per month on a similar plan, your own subscription can effectively be covered. That is 24 referred kitchens in a year.",
+                "copyReferralLink": "Copy referral link",
+                "referralTools": "Referral tools",
+                "accountSettings": "Account settings",
+                "accountSettingsText": "Manage account-level settings here. Page visibility is controlled in the published-page panel above.",
+                "dangerZoneTitle": "Danger zone",
+                "dangerZoneLead": "Delete kitchen/account",
+                "dangerZoneText": "Use unpublish if you only need a break. Permanent deletion requires extra confirmation.",
                 "growthTools": "Growth and tools",
                 "academyLabel": "Academy",
                 "academyTitle": "Business Academy",
@@ -5203,6 +5211,14 @@ const Y = {
                 "inviteShort": "Inviter kjøkken. Tjen kreditt.",
                 "referralShort": "50 % av første månedsverdi. Vises og brukes i din egen konto-valuta.",
                 "openReferral": "Åpne verving",
+                "referralExample": "Eksempel: Hvis du verver 2 kjøkken per måned på tilsvarende plan, kan ditt eget abonnement i praksis bli dekket. Det er 24 vervede kjøkken i året.",
+                "copyReferralLink": "Kopier vervelenke",
+                "referralTools": "Vervingsverktøy",
+                "accountSettings": "Kontoinnstillinger",
+                "accountSettingsText": "Administrer kontoinnstillinger her. Synlighet styres i publiseringspanelet over.",
+                "dangerZoneTitle": "Fareområde",
+                "dangerZoneLead": "Slett kjøkken/konto",
+                "dangerZoneText": "Bruk avpublisering hvis du bare trenger en pause. Permanent sletting krever ekstra bekreftelse.",
                 "growthTools": "Vekst og verktøy",
                 "academyLabel": "Akademi",
                 "academyTitle": "Business Academy",
@@ -7257,6 +7273,7 @@ const Y = {
           ]),
           el('div', { class:'row', style:'gap:8px; flex-wrap:wrap; margin-top:14px' }, [
             button(dashText('editMenu'), { variant:'primary', onclick: ()=>selectOwnerTab('kitchen', { scrollId:'sec-menu' }) }),
+            button(dashText('referralTools'), { variant:'outline', onclick: ()=>_scrollToSec('sec-referral-details') }),
             button(dashText('preview'), { variant:'outline', onclick: ()=>{ if(publicUrl) window.open(publicUrl, '_blank'); } }),
             listing?.published
               ? button(dashText('unpublish'), { variant:'outline', onclick: ()=>setPublication(false), disabled:ownerState.savingListing })
@@ -7325,15 +7342,43 @@ const Y = {
       const monthly = market.prices[plan] || market.prices.basic;
       const availableCredit = Number(listing?.referral_credit_balance || listing?.referralCreditBalance || 0);
       const savedNextMonth = Math.min(monthly, availableCredit);
+      const code = referralCodeForListing();
+      const inviteLink = `${location.origin}/list?ref=${encodeURIComponent(code)}`;
+      const copyInviteLink = async ()=>{ try{ await navigator.clipboard?.writeText(inviteLink); alert(dashText('inviteLinkCopied')); } catch(_e){ alert(inviteLink); } };
       return el('div', { class:'dashGrowthCard dashGrowthReferral' }, [
         el('div', { class:'dashGrowthLabel' }, [dashText('referral')]),
         el('div', { class:'dashGrowthTitle' }, [dashText('inviteShort')]),
         el('div', { class:'muted small' }, [dashText('referralShort')]),
+        el('div', { class:'muted small', style:'margin-top:8px' }, [dashText('referralExample')]),
         el('div', { class:'dashSavingsLine' }, [
           el('span', {}, [dashText('savedNextMonth')]),
           el('strong', {}, [moneyAmount(savedNextMonth, market.currency) + ' ' + market.currency])
         ]),
-        button(dashText('openReferral'), { variant:'outline', onclick:()=>_scrollToSec('sec-referral-details') })
+        el('div', { class:'row', style:'gap:8px; flex-wrap:wrap; margin-top:10px' }, [
+          button(dashText('openReferral'), { variant:'primary', onclick:()=>_scrollToSec('sec-referral-details') }),
+          button(dashText('copyReferralLink'), { variant:'outline', onclick:copyInviteLink })
+        ])
+      ]);
+    }
+
+    function referralFocusCard(){
+      return infoCard(dashText('referralTools'), [
+        el('div', { class:'dashReferralFocus' }, [
+          el('div', {}, [
+            el('div', { class:'dashGrowthLabel' }, [dashText('referral')]),
+            el('div', { class:'dashGrowthTitle' }, [dashText('inviteKitchens')]),
+            el('div', { class:'muted' }, [dashText('referralIntro')]),
+            el('div', { class:'muted small', style:'margin-top:8px' }, [dashText('referralExample')])
+          ]),
+          el('div', { class:'row', style:'gap:8px; flex-wrap:wrap; align-items:center' }, [
+            button(dashText('openReferral'), { variant:'primary', onclick:()=>_scrollToSec('sec-referral-details') }),
+            button(dashText('copyReferralLink'), { variant:'outline', onclick: async()=>{
+              const code = referralCodeForListing();
+              const inviteLink = `${location.origin}/list?ref=${encodeURIComponent(code)}`;
+              try{ await navigator.clipboard?.writeText(inviteLink); alert(dashText('inviteLinkCopied')); }catch(_e){ alert(inviteLink); }
+            } })
+          ])
+        ])
       ]);
     }
 
@@ -7408,37 +7453,41 @@ const Y = {
       ].filter(Boolean));
     }
 
-    function accountControlCard(){
+    function accountSettingsCard(){
+      const no = state.lang === 'no';
+      return infoCard(dashText('accountSettings'), [
+        el('div', { class:'muted' }, [dashText('accountSettingsText')]),
+        el('div', { class:'accountControlGrid', style:'margin-top:12px' }, [
+          el('div', { class:'accountControlPanel' }, [
+            el('div', { class:'dashGrowthLabel' }, [dashText('plan')]),
+            el('div', { class:'dashGrowthTitle' }, [planDisplayName(listing?.plan || 'basic')]),
+            el('div', { class:'muted small' }, [Number(listing?.plan_active || 0)
+              ? (no ? 'Abonnementet er aktivt.' : 'The subscription is active.')
+              : (no ? 'Abonnementet er ikke aktivt ennå.' : 'The subscription is not active yet.')
+            ])
+          ]),
+          el('div', { class:'accountControlPanel' }, [
+            el('div', { class:'dashGrowthLabel' }, [dashText('visibility')]),
+            el('div', { class:'dashGrowthTitle' }, [listing?.published ? dashText('visibleCustomers') : dashText('notVisibleCustomers')]),
+            el('div', { class:'muted small' }, [no
+              ? 'Bruk publiseringspanelet over for å publisere, avpublisere, forhåndsvise eller kopiere kundelenken.'
+              : 'Use the published-page panel above to publish, unpublish, preview or copy the customer link.'
+            ])
+          ])
+        ])
+      ]);
+    }
+
+    function dangerZoneCard(){
       const no = state.lang === 'no';
       const ownerState = _ensureOwnerState(token);
-      const isLive = !!Number(listing?.published || 0);
-      const isPaid = !!Number(listing?.plan_active || 0);
-      return infoCard(no ? 'Synlighet og konto' : 'Visibility and account', [
-        el('div', { class:'accountControlGrid' }, [
-          el('div', { class:'accountControlPanel' }, [
-            el('div', { class:'dashGrowthLabel' }, [no ? 'Synlighet' : 'Visibility']),
-            el('div', { class:'dashGrowthTitle' }, [isLive ? (no ? 'Kjøkkenet er synlig' : 'Kitchen is visible') : (no ? 'Kjøkkenet er skjult' : 'Kitchen is hidden')]),
-            el('div', { class:'muted small' }, [isLive
-              ? (no ? 'Kjøkkenet vises i Explore og kan åpnes av kunder.' : 'Your kitchen appears in Explore and can be opened by customers.')
-              : (no ? 'Kjøkkenet er ikke synlig for kunder. Meny, bilder og innstillinger er lagret.' : 'Your kitchen is not visible to customers. Menu, photos and settings are saved.')
-            ]),
-            el('div', { class:'row', style:'gap:10px; margin-top:12px; flex-wrap:wrap' }, [
-              isLive
-                ? button(no ? 'Skjul kjøkken' : 'Hide kitchen', { variant:'outline', onclick:()=>setPublication(false), disabled:ownerState.savingListing })
-                : button(no ? 'Gjør synlig igjen' : 'Make visible again', { variant:'primary', onclick:()=>setPublication(true), disabled:ownerState.savingListing || !isPaid }),
-              !isPaid ? el('span', { class:'muted small' }, [no ? 'Abonnement må være aktivt før siden kan publiseres.' : 'Subscription must be active before the page can be published.']) : null
-            ].filter(Boolean))
-          ]),
-          el('div', { class:'accountControlPanel dangerZone' }, [
-            el('div', { class:'dashGrowthLabel dangerText' }, [no ? 'Fareområde' : 'Danger zone']),
-            el('div', { class:'dashGrowthTitle' }, [no ? 'Slett kjøkken/konto' : 'Delete kitchen/account']),
-            el('div', { class:'muted small' }, [no
-              ? 'Bruk skjuling hvis du bare vil ta en pause. Sletting er permanent og krever ekstra bekreftelse.'
-              : 'Use hiding if you only need a break. Deletion is permanent and requires extra confirmation.'
-            ]),
-            el('div', { class:'row', style:'gap:10px; margin-top:12px; flex-wrap:wrap' }, [
-              button(no ? 'Slett permanent' : 'Delete permanently', { variant:'outline', className:'dangerOutlineBtn', onclick:deleteKitchenAccount, disabled:ownerState.savingListing })
-            ])
+      return infoCard(dashText('dangerZoneTitle'), [
+        el('div', { class:'accountControlPanel dangerZone' }, [
+          el('div', { class:'dashGrowthLabel dangerText' }, [dashText('dangerZoneTitle')]),
+          el('div', { class:'dashGrowthTitle' }, [dashText('dangerZoneLead')]),
+          el('div', { class:'muted small' }, [dashText('dangerZoneText')]),
+          el('div', { class:'row', style:'gap:10px; margin-top:12px; flex-wrap:wrap' }, [
+            button(no ? 'Slett permanent' : 'Delete permanently', { variant:'outline', className:'dangerOutlineBtn', onclick:deleteKitchenAccount, disabled:ownerState.savingListing })
           ])
         ])
       ]);
@@ -7460,13 +7509,15 @@ const Y = {
           ]),
           dashboardNumbersCard()
         ]),
+        referralFocusCard(),
         nextActionsCard(),
         launchControlCard(),
-        accountControlCard(),
         growthToolsCard(),
         el('div', { id:'sec-referral-details', class:'dashReferralDetails dashReferralDetailsOpen' }, [
           referralDashboardCard()
-        ])
+        ]),
+        accountSettingsCard(),
+        dangerZoneCard()
       ]);
     }
 
