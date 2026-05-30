@@ -3422,6 +3422,58 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:12px 0;}
 @media (max-width:780px){.referralTop{grid-template-columns:auto 1fr;padding:18px 16px 12px 18px;}.referralValuePill{grid-column:1 / -1;text-align:left;min-width:0;}.referralStatsGrid{grid-template-columns:repeat(2,minmax(0,1fr));margin-left:18px;margin-right:16px;}.referralRule,.referralLinkBox,.referralShareRow,.referralHistoryHead,.referralTableWrap{margin-left:18px;margin-right:16px;}}
 @media (max-width:520px){.referralTop{grid-template-columns:1fr;}.referralIcon{display:none;}.referralLinkLine{flex-direction:column;align-items:stretch;}.referralStatsGrid{grid-template-columns:1fr;}}
 
+/* Step 9.81 — cleaner referral page hero and one referral entry point on dashboard */
+.ownerReferralPage .ownerReferralHeroPanel{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 220px;
+  gap:18px;
+  align-items:stretch;
+  margin:0 0 16px;
+  padding:22px;
+  border:1px solid rgba(16,61,37,.13);
+  border-radius:24px;
+  background:linear-gradient(135deg,#fffaf1 0%,#f6fbef 54%,#ffffff 100%);
+  box-shadow:0 16px 36px rgba(25,45,32,.07);
+}
+.ownerReferralHeroCopy h2{
+  margin:6px 0 8px;
+  color:#1f241d;
+  font-size:28px;
+  line-height:1.08;
+  letter-spacing:-.9px;
+  font-weight:900;
+  max-width:680px;
+}
+.ownerReferralHeroCopy .muted{
+  max-width:760px;
+  line-height:1.5;
+}
+.ownerReferralHeroCopy .referralExampleLine{
+  margin-top:10px;
+  color:#6b6258;
+  font-weight:700;
+}
+.ownerReferralHeroActions{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  justify-content:center;
+  align-items:stretch;
+}
+.ownerReferralHeroActions .btn{
+  width:100%;
+  justify-content:center;
+  min-height:46px;
+  white-space:normal;
+  text-align:center;
+}
+@media (max-width:760px){
+  .ownerReferralPage .ownerReferralHeroPanel{grid-template-columns:1fr;padding:18px;border-radius:20px;}
+  .ownerReferralHeroCopy h2{font-size:23px;}
+  .ownerReferralHeroActions{flex-direction:row;flex-wrap:wrap;justify-content:flex-start;}
+  .ownerReferralHeroActions .btn{width:auto;flex:1 1 160px;}
+}
+
 
 .referralEmptyState{
   text-align:center;

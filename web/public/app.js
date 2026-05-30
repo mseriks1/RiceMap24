@@ -6928,12 +6928,14 @@ const Y = {
         window.location.href = `mailto:?subject=${subject}&body=${body}`;
       }
       return el('div', { class:'container section narrow ownerReferralPage' }, [
-        el('div', { class:'section-title ownerReferralHero' }, [
-          el('div', { class:'ownerDashKicker' }, [dashText('referralProgram')]),
-          el('h2', {}, [dashText('referralHeadline')]),
-          el('p', { class:'muted' }, [dashText('referralIntro')]),
-          el('p', { class:'muted small referralExampleLine' }, [dashText('referralExample')]),
-          el('div', { class:'row', style:'gap:10px; margin-top:14px; flex-wrap:wrap' }, [
+        el('div', { class:'ownerReferralHeroPanel' }, [
+          el('div', { class:'ownerReferralHeroCopy' }, [
+            el('div', { class:'ownerDashKicker' }, [dashText('referralProgram')]),
+            el('h2', {}, [dashText('referralHeadline')]),
+            el('p', { class:'muted' }, [dashText('referralIntro')]),
+            el('p', { class:'muted small referralExampleLine' }, [dashText('referralExample')])
+          ]),
+          el('div', { class:'ownerReferralHeroActions' }, [
             button(dashText('copyReferralLink'), { variant:'primary', onclick:copyInvite }),
             button(dashText('email'), { variant:'outline', onclick:emailInvite }),
             button(state.lang==='no' ? 'Tilbake til dashboard' : 'Back to dashboard', { variant:'outline', onclick:()=>selectOwnerTab('dashboard') })
@@ -7424,7 +7426,6 @@ const Y = {
       const goRecipes = ()=>selectOwnerTab('tools', { toolsTab:'recipes' });
       return infoCard(dashText('growthTools'), [
         el('div', { class:'dashGrowthGrid' }, [
-          compactReferralCard(),
           el('div', { class:'dashGrowthCard' }, [
             el('div', { class:'dashGrowthLabel' }, [dashText('academyLabel')]),
             el('div', { class:'dashGrowthTitle' }, [dashText('academyTitle')]),
