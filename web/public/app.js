@@ -5046,11 +5046,11 @@ const Y = {
                 "shareInvite": "Join RiceMap24 and create your own kitchen page:",
                 "inviteEmailSubject": "RiceMap24 invite",
                 "referralProgram": "Referral program",
-                "referralHeadline": "Help other kitchens start — and lower your own RiceMap24 cost",
-                "referralDashHeadline": "Invite other kitchens and earn credit",
+                "referralHeadline": "Lower your RiceMap24 cost by inviting other kitchens",
+                "referralDashHeadline": "Lower your monthly cost with referrals",
                 "referralDashIntro": "Share your invitation link with serious home kitchens and local food creators. Open the referral page to copy your link and see how the credit works.",
                 "inviteKitchens": "Invite kitchens. Earn subscription credit.",
-                "referralIntro": "Share RiceMap24 with other home kitchens. When someone you invite becomes an active paying member, you earn credit that reduces your future RiceMap24 subscription costs.",
+                "referralIntro": "Invite home kitchens that could use RiceMap24. When someone you invite becomes an active paying member, you earn credit that can reduce your future subscription costs.",
                 "credit": "Credit",
                 "ofFirstMonth": "of first month",
                 "rule": "Rule: ",
@@ -5104,7 +5104,7 @@ const Y = {
                 "recommendedNext": "Recommended next steps",
                 "referral": "Referral",
                 "inviteShort": "Invite kitchens. Earn credit.",
-                "referralShort": "50% of the first month value. Shown and used in your own account currency.",
+                "referralShort": "Earn 50% of their first month as credit. Invite a few serious kitchens and your own subscription can become much cheaper.",
                 "openReferral": "Open referral",
                 "referralExample": "Example: if you refer 2 kitchens per month on a similar plan, your own subscription can effectively be covered. That is 24 referred kitchens in a year.",
                 "copyReferralLink": "Copy referral link",
@@ -5157,11 +5157,11 @@ const Y = {
                 "shareInvite": "Bli med på RiceMap24 og lag din egen kjøkkenside:",
                 "inviteEmailSubject": "Invitasjon til RiceMap24",
                 "referralProgram": "Vervingsprogram",
-                "referralHeadline": "Hjelp andre kjøkken i gang – og reduser din egen RiceMap24-kostnad",
-                "referralDashHeadline": "Verv andre kjøkken og tjen kreditt",
+                "referralHeadline": "Reduser RiceMap24-kostnaden din ved å verve andre kjøkken",
+                "referralDashHeadline": "Reduser månedsprisen din med verving",
                 "referralDashIntro": "Del vervelenken med seriøse hjemmekjøkken og lokale mataktører. Åpne vervingssiden for å kopiere lenken og se hvordan kreditten fungerer.",
                 "inviteKitchens": "Inviter kjøkken. Tjen abonnementskreditt.",
-                "referralIntro": "Del RiceMap24 med andre hjemmekjøkken. Når noen du inviterer blir aktiv betalende kunde, får du kreditt som reduserer dine fremtidige RiceMap24-abonnementskostnader.",
+                "referralIntro": "Inviter hjemmekjøkken som kan ha nytte av RiceMap24. Når noen du inviterer blir aktiv betalende kunde, får du kreditt som kan redusere dine fremtidige abonnementskostnader.",
                 "credit": "Kreditt",
                 "ofFirstMonth": "av første måned",
                 "rule": "Regel: ",
@@ -5215,7 +5215,7 @@ const Y = {
                 "recommendedNext": "Anbefalte neste steg",
                 "referral": "Verving",
                 "inviteShort": "Inviter kjøkken. Tjen kreditt.",
-                "referralShort": "50 % av første månedsverdi. Vises og brukes i din egen konto-valuta.",
+                "referralShort": "Få 50 % av første månedsverdi som kreditt. Verver du noen få seriøse kjøkken, kan ditt eget abonnement bli mye billigere.",
                 "openReferral": "Åpne verving",
                 "referralExample": "Eksempel: Hvis du verver 2 kjøkken per måned på tilsvarende plan, kan ditt eget abonnement i praksis bli dekket. Det er 24 vervede kjøkken i året.",
                 "copyReferralLink": "Kopier vervelenke",
@@ -7421,9 +7421,18 @@ const Y = {
 
     function growthToolsCard(){
       const goContent = ()=>selectOwnerTab('content');
+      const goMasterclass = ()=>{
+        if (!state.preview.contentTabs) state.preview.contentTabs = {};
+        state.preview.contentTabs[dlToken] = 'masterclass';
+        selectOwnerTab('content');
+      };
       const goCreative = ()=>selectOwnerTab('tools', { toolsTab:'creative' });
       const goCustomers = ()=>selectOwnerTab('results', { resultsTab:'customers' });
       const goRecipes = ()=>selectOwnerTab('tools', { toolsTab:'recipes' });
+      const masterclassText = state.lang === 'no'
+        ? 'Større læringsmoduler for bilder, video, menystrategi og vekst.'
+        : 'Larger learning modules for photos, video, menu strategy and growth.';
+      const openMasterclassText = state.lang === 'no' ? 'Åpne Masterclass' : 'Open Masterclass';
       return infoCard(dashText('growthTools'), [
         el('div', { class:'dashGrowthGrid' }, [
           el('div', { class:'dashGrowthCard' }, [
@@ -7431,6 +7440,12 @@ const Y = {
             el('div', { class:'dashGrowthTitle' }, [dashText('academyTitle')]),
             el('div', { class:'muted small' }, [dashText('learnAcademy')]),
             button(dashText('openAcademy'), { variant:'outline', onclick:goContent })
+          ]),
+          el('div', { class:'dashGrowthCard' }, [
+            el('div', { class:'dashGrowthLabel' }, ['MASTERCLASS']),
+            el('div', { class:'dashGrowthTitle' }, [ownerUi('tabMasterclass')]),
+            el('div', { class:'muted small' }, [masterclassText]),
+            button(openMasterclassText, { variant:'outline', onclick:goMasterclass })
           ]),
           el('div', { class:'dashGrowthCard' }, [
             el('div', { class:'dashGrowthLabel' }, [dashText('printLabel')]),
