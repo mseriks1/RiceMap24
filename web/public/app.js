@@ -4049,7 +4049,7 @@ function pagePreviewCook(listing, token){
   if (state.preview.tabs[dlToken] === 'premium') state.preview.tabs[dlToken] = 'results';
   if (state.preview.tabs[dlToken] === 'supplies') state.preview.tabs[dlToken] = 'tools';
 
-  const ownerTabs = ['dashboard','kitchen','start','content','results','tools','builder','support'];
+  const ownerTabs = ['dashboard','kitchen','start','referral','content','results','tools','builder','support'];
   const urlTab = new URLSearchParams(location.search).get('tab');
   if (urlTab && ownerTabs.includes(urlTab)) state.preview.tabs[dlToken] = urlTab;
 
@@ -5046,6 +5046,9 @@ const Y = {
                 "shareInvite": "Join RiceMap24 and create your own kitchen page:",
                 "inviteEmailSubject": "RiceMap24 invite",
                 "referralProgram": "Referral program",
+                "referralHeadline": "Help other kitchens start — and lower your own RiceMap24 cost",
+                "referralDashHeadline": "Invite other kitchens and earn credit",
+                "referralDashIntro": "Share your invitation link with serious home kitchens and local food creators. Open the referral page to copy your link and see how the credit works.",
                 "inviteKitchens": "Invite kitchens. Earn subscription credit.",
                 "referralIntro": "Share RiceMap24 with other home kitchens. When someone you invite becomes an active paying member, you earn credit that reduces your future RiceMap24 subscription costs.",
                 "credit": "Credit",
@@ -5154,6 +5157,9 @@ const Y = {
                 "shareInvite": "Bli med på RiceMap24 og lag din egen kjøkkenside:",
                 "inviteEmailSubject": "Invitasjon til RiceMap24",
                 "referralProgram": "Vervingsprogram",
+                "referralHeadline": "Hjelp andre kjøkken i gang – og reduser din egen RiceMap24-kostnad",
+                "referralDashHeadline": "Verv andre kjøkken og tjen kreditt",
+                "referralDashIntro": "Del vervelenken med seriøse hjemmekjøkken og lokale mataktører. Åpne vervingssiden for å kopiere lenken og se hvordan kreditten fungerer.",
                 "inviteKitchens": "Inviter kjøkken. Tjen abonnementskreditt.",
                 "referralIntro": "Del RiceMap24 med andre hjemmekjøkken. Når noen du inviterer blir aktiv betalende kunde, får du kreditt som reduserer dine fremtidige RiceMap24-abonnementskostnader.",
                 "credit": "Kreditt",
@@ -6924,12 +6930,13 @@ const Y = {
       return el('div', { class:'container section narrow ownerReferralPage' }, [
         el('div', { class:'section-title ownerReferralHero' }, [
           el('div', { class:'ownerDashKicker' }, [dashText('referralProgram')]),
-          el('h2', {}, [dashText('inviteKitchens')]),
+          el('h2', {}, [dashText('referralHeadline')]),
           el('p', { class:'muted' }, [dashText('referralIntro')]),
           el('p', { class:'muted small referralExampleLine' }, [dashText('referralExample')]),
           el('div', { class:'row', style:'gap:10px; margin-top:14px; flex-wrap:wrap' }, [
             button(dashText('copyReferralLink'), { variant:'primary', onclick:copyInvite }),
-            button(dashText('email'), { variant:'outline', onclick:emailInvite })
+            button(dashText('email'), { variant:'outline', onclick:emailInvite }),
+            button(state.lang==='no' ? 'Tilbake til dashboard' : 'Back to dashboard', { variant:'outline', onclick:()=>selectOwnerTab('dashboard') })
           ])
         ]),
         referralDashboardCard()
@@ -7301,7 +7308,7 @@ const Y = {
           ]),
           el('div', { class:'row', style:'gap:8px; flex-wrap:wrap; margin-top:14px' }, [
             button(dashText('editMenu'), { variant:'primary', onclick: ()=>selectOwnerTab('kitchen', { scrollId:'sec-menu' }) }),
-            button(dashText('referralTools'), { variant:'outline', onclick: ()=>_scrollToSec('sec-referral-details') }),
+            button(dashText('referralTools'), { variant:'outline', onclick: ()=>selectOwnerTab('referral') }),
             button(dashText('preview'), { variant:'outline', onclick: ()=>{ if(publicUrl) window.open(publicUrl, '_blank'); } }),
             listing?.published
               ? button(dashText('unpublish'), { variant:'outline', onclick: ()=>setPublication(false), disabled:ownerState.savingListing })
@@ -7383,7 +7390,7 @@ const Y = {
           el('strong', {}, [moneyAmount(savedNextMonth, market.currency) + ' ' + market.currency])
         ]),
         el('div', { class:'row', style:'gap:8px; flex-wrap:wrap; margin-top:10px' }, [
-          button(dashText('openReferral'), { variant:'primary', onclick:()=>_scrollToSec('sec-referral-details') }),
+          button(dashText('openReferral'), { variant:'primary', onclick:()=>selectOwnerTab('referral') }),
           button(dashText('copyReferralLink'), { variant:'outline', onclick:copyInviteLink })
         ])
       ]);
@@ -7394,12 +7401,12 @@ const Y = {
         el('div', { class:'dashReferralFocus' }, [
           el('div', {}, [
             el('div', { class:'dashGrowthLabel' }, [dashText('referral')]),
-            el('div', { class:'dashGrowthTitle' }, [dashText('inviteKitchens')]),
-            el('div', { class:'muted' }, [dashText('referralIntro')]),
-            el('div', { class:'muted small', style:'margin-top:8px' }, [dashText('referralExample')])
+            el('div', { class:'dashGrowthTitle' }, [dashText('referralDashHeadline')]),
+            el('div', { class:'muted' }, [dashText('referralDashIntro')]),
+            el('div', { class:'muted small', style:'margin-top:8px' }, [dashText('referralShort')])
           ]),
           el('div', { class:'row', style:'gap:8px; flex-wrap:wrap; align-items:center' }, [
-            button(dashText('openReferral'), { variant:'primary', onclick:()=>_scrollToSec('sec-referral-details') }),
+            button(dashText('referralTools'), { variant:'primary', onclick:()=>selectOwnerTab('referral') }),
             button(dashText('copyReferralLink'), { variant:'outline', onclick: async()=>{
               const code = referralCodeForListing();
               const inviteLink = `${location.origin}/list?ref=${encodeURIComponent(code)}`;
@@ -7545,9 +7552,6 @@ const Y = {
         nextActionsCard(),
         launchControlCard(),
         growthToolsCard(),
-        el('div', { id:'sec-referral-details', class:'dashReferralDetails dashReferralDetailsOpen' }, [
-          referralDashboardCard()
-        ]),
         accountSettingsCard(),
         dangerZoneCard()
       ]);
