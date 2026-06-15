@@ -5047,8 +5047,8 @@ const Y = {
                 "inviteEmailSubject": "RiceMap24 invite",
                 "referralProgram": "Referral program",
                 "referralHeadline": "Lower your RiceMap24 cost by inviting other kitchens",
-                "referralDashHeadline": "Invite kitchens and let referrals pay part of your plan",
-                "referralDashIntro": "A few good referrals can reduce what you pay for RiceMap24 each month. Share your link with kitchens that are ready to sell more locally.",
+                "referralDashHeadline": "Let referrals help pay for your RiceMap24 plan",
+                "referralDashIntro": "Invite serious home kitchens and local food creators. When they become paying members, you earn credit that can reduce your own monthly RiceMap24 cost.",
                 "inviteKitchens": "Invite kitchens. Earn subscription credit.",
                 "referralIntro": "Invite home kitchens that could use RiceMap24. When someone you invite becomes an active paying member, you earn credit that can reduce your future subscription costs.",
                 "credit": "Credit",
@@ -5158,8 +5158,8 @@ const Y = {
                 "inviteEmailSubject": "Invitasjon til RiceMap24",
                 "referralProgram": "Vervingsprogram",
                 "referralHeadline": "Reduser RiceMap24-kostnaden din ved å verve andre kjøkken",
-                "referralDashHeadline": "Verv kjøkken og la kreditten dekke deler av planen din",
-                "referralDashIntro": "Noen gode vervinger kan redusere det du betaler for RiceMap24 hver måned. Del lenken med kjøkken som er klare for å selge mer lokalt.",
+                "referralDashHeadline": "La vervinger betale deler av RiceMap24-planen din",
+                "referralDashIntro": "Inviter seriøse hjemmekjøkken og lokale matprodusenter. Når de blir betalende medlemmer, får du kreditt som kan redusere din egen månedlige RiceMap24-kostnad.",
                 "inviteKitchens": "Inviter kjøkken. Tjen abonnementskreditt.",
                 "referralIntro": "Inviter hjemmekjøkken som kan ha nytte av RiceMap24. Når noen du inviterer blir aktiv betalende kunde, får du kreditt som kan redusere dine fremtidige abonnementskostnader.",
                 "credit": "Kreditt",
@@ -7400,15 +7400,13 @@ const Y = {
 
     function referralFocusCard(){
       return infoCard(dashText('referralDashHeadline'), [
-        el('div', { class:'dashReferralFocus' }, [
-          el('div', {}, [
-            el('div', { class:'dashGrowthLabel' }, [dashText('referral')]),
-            el('div', { class:'dashGrowthTitle' }, [dashText('referralDashHeadline')]),
-            el('div', { class:'muted' }, [dashText('referralDashIntro')]),
-            el('div', { class:'muted small', style:'margin-top:8px' }, [dashText('referralShort')])
+        el('div', { class:'dashReferralFocus dashReferralFocusHero' }, [
+          el('div', { class:'dashReferralCopy' }, [
+            el('div', { class:'dashReferralBigText' }, [dashText('referralDashIntro')]),
+            el('div', { class:'muted small dashReferralSupport' }, [dashText('referralShort')])
           ]),
-          el('div', { class:'row', style:'gap:8px; flex-wrap:wrap; align-items:center' }, [
-            button(dashText('referralTools'), { variant:'primary', onclick:()=>selectOwnerTab('referral') }),
+          el('div', { class:'dashReferralActions' }, [
+            button(dashText('openReferral'), { variant:'primary', onclick:()=>selectOwnerTab('referral') }),
             button(dashText('copyReferralLink'), { variant:'outline', onclick: async()=>{
               const code = referralCodeForListing();
               const inviteLink = `${location.origin}/list?ref=${encodeURIComponent(code)}`;
@@ -7416,7 +7414,7 @@ const Y = {
             } })
           ])
         ])
-      ]);
+      ], { className:'dashReferralInfoCard' });
     }
 
     function growthToolsCard(){
