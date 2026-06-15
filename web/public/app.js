@@ -5047,8 +5047,8 @@ const Y = {
                 "inviteEmailSubject": "RiceMap24 invite",
                 "referralProgram": "Referral program",
                 "referralHeadline": "Lower your RiceMap24 cost by inviting other kitchens",
-                "referralDashHeadline": "Turn referrals into lower monthly costs",
-                "referralDashIntro": "Share your invite link with serious home kitchens and local food creators. When they become paying members, referral credit can reduce what you pay for RiceMap24 each month.",
+                "referralDashHeadline": "Let referrals help pay for your RiceMap24 plan",
+                "referralDashIntro": "Invite serious home kitchens and local food creators. When they become paying members, you earn credit that can reduce your own monthly RiceMap24 cost.",
                 "inviteKitchens": "Invite kitchens. Earn subscription credit.",
                 "referralIntro": "Invite home kitchens that could use RiceMap24. When someone you invite becomes an active paying member, you earn credit that can reduce your future subscription costs.",
                 "credit": "Credit",
@@ -5158,8 +5158,8 @@ const Y = {
                 "inviteEmailSubject": "Invitasjon til RiceMap24",
                 "referralProgram": "Vervingsprogram",
                 "referralHeadline": "Reduser RiceMap24-kostnaden din ved å verve andre kjøkken",
-                "referralDashHeadline": "Gjør verving til lavere månedskostnad",
-                "referralDashIntro": "Del invitasjonslenken med seriøse hjemmekjøkken og lokale matprodusenter. Når de blir betalende medlemmer, kan vervingskreditt redusere det du betaler for RiceMap24 hver måned.",
+                "referralDashHeadline": "La vervinger betale deler av RiceMap24-planen din",
+                "referralDashIntro": "Inviter seriøse hjemmekjøkken og lokale matprodusenter. Når de blir betalende medlemmer, får du kreditt som kan redusere din egen månedlige RiceMap24-kostnad.",
                 "inviteKitchens": "Inviter kjøkken. Tjen abonnementskreditt.",
                 "referralIntro": "Inviter hjemmekjøkken som kan ha nytte av RiceMap24. Når noen du inviterer blir aktiv betalende kunde, får du kreditt som kan redusere dine fremtidige abonnementskostnader.",
                 "credit": "Kreditt",
@@ -7399,16 +7399,13 @@ const Y = {
     }
 
     function referralFocusCard(){
-      return el('div', { class:'ownerDashHero ownerDashReferralHero' }, [
-        el('div', { class:'ownerDashHeroText' }, [
-          el('div', { class:'ownerDashKicker' }, [dashText('referralProgram')]),
-          el('h2', {}, [dashText('referralDashHeadline')]),
-          el('p', {}, [dashText('referralDashIntro')])
-        ]),
-        el('div', { class:'ownerDashHeroPanel ownerDashReferralPanel' }, [
-          el('div', { class:'dashGrowthTitle' }, [dashText('inviteKitchens')]),
-          el('div', { class:'muted small' }, [dashText('referralShort')]),
-          el('div', { class:'row', style:'gap:8px; flex-wrap:wrap; margin-top:14px' }, [
+      return infoCard(dashText('referralDashHeadline'), [
+        el('div', { class:'dashReferralFocus dashReferralFocusHero' }, [
+          el('div', { class:'dashReferralCopy' }, [
+            el('div', { class:'dashReferralBigText' }, [dashText('referralDashIntro')]),
+            el('div', { class:'muted small dashReferralSupport' }, [dashText('referralShort')])
+          ]),
+          el('div', { class:'dashReferralActions' }, [
             button(dashText('openReferral'), { variant:'primary', onclick:()=>selectOwnerTab('referral') }),
             button(dashText('copyReferralLink'), { variant:'outline', onclick: async()=>{
               const code = referralCodeForListing();
@@ -7417,7 +7414,7 @@ const Y = {
             } })
           ])
         ])
-      ]);
+      ], { className:'dashReferralInfoCard' });
     }
 
     function growthToolsCard(){
@@ -18203,9 +18200,9 @@ function render(){
   if (!root) return;
 
   try{
-    // Build the full route in memory first, then replace the root in one operation.
-    // This prevents stacked/duplicated page sections if a deploy/browser briefly runs
-    // overlapping renders while scrolling or switching owner tabs.
+    root.innerHTML = '';
+
+    // Only show the customer order UI on the public kitchen page (/c/:slug).
     const _parts = location.pathname.split('/').filter(Boolean);
     const showOrderUi = (_parts[0] === 'c');
 
@@ -18217,8 +18214,12 @@ function render(){
       (showOrderUi && state.currentListing ? orderDrawer(state.currentListing) : null),
     ].filter(Boolean));
 
+    root.appendChild(main);
+
+    // Floating scroll-to-top button for long lists (mobile friendly)
     const topBtn = el('button', { class:'toTopBtn' + (state.ui.showTop ? '' : ' is-hidden'), type:'button', title:(state.lang==='no'?'Til toppen':'Top'), 'aria-hidden': state.ui.showTop ? 'false' : 'true', onclick: ()=>scrollToTop() }, ['↑']);
-    root.replaceChildren(main, topBtn);
+    root.appendChild(topBtn);
+
 
     // After DOM is in place, initialize the portal map if the user is on Map view.
     const path = location.pathname;
@@ -18254,11 +18255,6 @@ function render(){
 }
 
 async function boot(){
-  if (window.__rm_boot_started){
-    return;
-  }
-  window.__rm_boot_started = true;
-
   if (!window.__rm_err_handlers){
     window.__rm_err_handlers = true;
     window.addEventListener('error', (e)=>{ console.error('Global error:', e.error || e.message || e); });
