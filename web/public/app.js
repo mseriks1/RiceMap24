@@ -1312,13 +1312,14 @@ async function adminRefreshFromLogin(){
   if (typeof window.__rm24AdminRefresh === 'function') return await window.__rm24AdminRefresh();
 }
 
-async function apiJson(method, url, body){
-  const res = await fetch(url, {
+async function apiJson(method, url, body, opts={}){
+  const timeoutMs = opts.timeoutMs || 15000;
+  const res = await fetchWithTimeout(url, {
     method,
     headers: { 'Content-Type':'application/json' },
     credentials:'include',
     body: method==='GET' ? undefined : JSON.stringify(body || {})
-  });
+  }, timeoutMs);
   if (!res.ok){
     // Prefer JSON error bodies, but fall back to plain text. Include status so
     // staging errors are actionable instead of only showing "Request failed".
@@ -4837,16 +4838,25 @@ const Y = {
         const payload = stripDemoImagesFromListingPayload(JSON.parse(JSON.stringify(d)));
         delete payload._id;
 
-        await apiJson('POST', `/api/owner/${encodeURIComponent(dlToken)}/save`, payload);
+        await apiJson('POST', `/api/owner/${encodeURIComponent(dlToken)}/save`, payload, { timeoutMs: silent ? 20000 : 30000 });
 
-        // Reload preview so UI always reflects server state
-        const fresh = await apiGet(`/api/preview/${encodeURIComponent(dlToken)}`);
-        state.currentListing = fresh?.listing || fresh || state.currentListing;
-        await refreshListingCollections();
-        // refresh edit buffer
-        o.editListing = JSON.parse(JSON.stringify(state.currentListing || {}));
-        o.editListing._id = state.currentListing?.id;
-        o.saveNotice = silent ? (state.lang==='no' ? 'Bilde lagret.' : 'Image saved.') : (state.lang==='no' ? 'Lagret. Åpne Preview for å kontrollere kundesiden.' : 'Saved. Open Preview to check the customer page.');
+        if (silent){
+          // Fast path for image/crop autosave: the browser already has the edited
+          // listing data. Do not reload /preview, /listings and /map/listings after
+          // every image upload; that made the dashboard feel very slow and could
+          // leave uploads looking stuck on Render.
+          state.currentListing = { ...(state.currentListing || {}), ...payload, id: listing.id };
+          o.saveNotice = state.lang==='no' ? 'Bilde lagret.' : 'Image saved.';
+        } else {
+          // Normal manual save still verifies server state and refreshes Explore/map data.
+          const fresh = await apiGet(`/api/preview/${encodeURIComponent(dlToken)}`, { timeoutMs: 12000 });
+          state.currentListing = fresh?.listing || fresh || state.currentListing;
+          await refreshListingCollections();
+          // refresh edit buffer only after manual full save, not after silent image save
+          o.editListing = JSON.parse(JSON.stringify(state.currentListing || {}));
+          o.editListing._id = state.currentListing?.id;
+          o.saveNotice = state.lang==='no' ? 'Lagret. Åpne Preview for å kontrollere kundesiden.' : 'Saved. Open Preview to check the customer page.';
+        }
       }catch(e){
         o.saveError = e?.message || String(e);
         o.saveNotice = '';
@@ -4938,21 +4948,32 @@ const Y = {
       fd.append('kind', kind);
       if (dishIndex !== null && dishIndex !== undefined) fd.append('dish_index', String(dishIndex));
       fd.append('file', file);
-      const r = await fetch('/api/uploads', { method:'POST', body: fd, credentials:'include' });
-      let j = null;
-      try{ j = await r.json(); }catch(_e){}
-      if (!r.ok) throw new Error((j && (j.detail||j.error)) ? (j.detail||j.error) : ('Upload failed ('+r.status+')'));
-      return j.url;
+      o.uploadingImage = true;
+      o.saveError = '';
+      o.saveNotice = state.lang==='no' ? 'Laster opp bilde…' : 'Uploading image…';
+      render();
+      try{
+        const uploadTimeout = Math.max(30000, Math.min(90000, Math.ceil((file.size || 0) / (1024*1024)) * 15000));
+        const r = await fetchWithTimeout('/api/uploads', { method:'POST', body: fd, credentials:'include' }, uploadTimeout);
+        let j = null;
+        try{ j = await r.json(); }catch(_e){}
+        if (!r.ok) throw new Error((j && (j.detail||j.error)) ? (j.detail||j.error) : ('Upload failed ('+r.status+')'));
+        return j.url;
+      } finally {
+        o.uploadingImage = false;
+      }
     }
 
     async function refreshListingCollections(){
       try{
-        const listings = await apiGet('/api/listings');
+        const listings = await apiGet('/api/listings', { timeoutMs: 5000 });
         if (Array.isArray(listings)) state.listings = listings;
+        else if (Array.isArray(listings?.items)) state.listings = listings.items;
       }catch(_e){}
       try{
-        const mapListings = await apiGet('/api/map/listings');
+        const mapListings = await apiGet('/api/map/listings', { timeoutMs: 5000 });
         if (Array.isArray(mapListings)) state.mapListings = mapListings;
+        else if (Array.isArray(mapListings?.items)) state.mapListings = mapListings.items;
       }catch(_e){}
     }
 
@@ -5047,8 +5068,8 @@ const Y = {
                 "inviteEmailSubject": "RiceMap24 invite",
                 "referralProgram": "Referral program",
                 "referralHeadline": "Lower your RiceMap24 cost by inviting other kitchens",
-                "referralDashHeadline": "Let referrals help pay for your RiceMap24 plan",
-                "referralDashIntro": "Invite serious home kitchens and local food creators. When they become paying members, you earn credit that can reduce your own monthly RiceMap24 cost.",
+                "referralDashHeadline": "Turn referrals into lower monthly costs",
+                "referralDashIntro": "Share your invite link with serious home kitchens and local food creators. When they become paying members, referral credit can reduce what you pay for RiceMap24 each month.",
                 "inviteKitchens": "Invite kitchens. Earn subscription credit.",
                 "referralIntro": "Invite home kitchens that could use RiceMap24. When someone you invite becomes an active paying member, you earn credit that can reduce your future subscription costs.",
                 "credit": "Credit",
@@ -5158,8 +5179,8 @@ const Y = {
                 "inviteEmailSubject": "Invitasjon til RiceMap24",
                 "referralProgram": "Vervingsprogram",
                 "referralHeadline": "Reduser RiceMap24-kostnaden din ved å verve andre kjøkken",
-                "referralDashHeadline": "La vervinger betale deler av RiceMap24-planen din",
-                "referralDashIntro": "Inviter seriøse hjemmekjøkken og lokale matprodusenter. Når de blir betalende medlemmer, får du kreditt som kan redusere din egen månedlige RiceMap24-kostnad.",
+                "referralDashHeadline": "Gjør verving til lavere månedskostnad",
+                "referralDashIntro": "Del invitasjonslenken med seriøse hjemmekjøkken og lokale matprodusenter. Når de blir betalende medlemmer, kan vervingskreditt redusere det du betaler for RiceMap24 hver måned.",
                 "inviteKitchens": "Inviter kjøkken. Tjen abonnementskreditt.",
                 "referralIntro": "Inviter hjemmekjøkken som kan ha nytte av RiceMap24. Når noen du inviterer blir aktiv betalende kunde, får du kreditt som kan redusere dine fremtidige abonnementskostnader.",
                 "credit": "Kreditt",
@@ -7399,13 +7420,16 @@ const Y = {
     }
 
     function referralFocusCard(){
-      return infoCard(dashText('referralDashHeadline'), [
-        el('div', { class:'dashReferralFocus dashReferralFocusHero' }, [
-          el('div', { class:'dashReferralCopy' }, [
-            el('div', { class:'dashReferralBigText' }, [dashText('referralDashIntro')]),
-            el('div', { class:'muted small dashReferralSupport' }, [dashText('referralShort')])
-          ]),
-          el('div', { class:'dashReferralActions' }, [
+      return el('div', { class:'ownerDashHero ownerDashReferralHero' }, [
+        el('div', { class:'ownerDashHeroText' }, [
+          el('div', { class:'ownerDashKicker' }, [dashText('referralProgram')]),
+          el('h2', {}, [dashText('referralDashHeadline')]),
+          el('p', {}, [dashText('referralDashIntro')])
+        ]),
+        el('div', { class:'ownerDashHeroPanel ownerDashReferralPanel' }, [
+          el('div', { class:'dashGrowthTitle' }, [dashText('inviteKitchens')]),
+          el('div', { class:'muted small' }, [dashText('referralShort')]),
+          el('div', { class:'row', style:'gap:8px; flex-wrap:wrap; margin-top:14px' }, [
             button(dashText('openReferral'), { variant:'primary', onclick:()=>selectOwnerTab('referral') }),
             button(dashText('copyReferralLink'), { variant:'outline', onclick: async()=>{
               const code = referralCodeForListing();
@@ -7414,7 +7438,7 @@ const Y = {
             } })
           ])
         ])
-      ], { className:'dashReferralInfoCard' });
+      ]);
     }
 
     function growthToolsCard(){
@@ -18200,9 +18224,9 @@ function render(){
   if (!root) return;
 
   try{
-    root.innerHTML = '';
-
-    // Only show the customer order UI on the public kitchen page (/c/:slug).
+    // Build the full route in memory first, then replace the root in one operation.
+    // This prevents stacked/duplicated page sections if a deploy/browser briefly runs
+    // overlapping renders while scrolling or switching owner tabs.
     const _parts = location.pathname.split('/').filter(Boolean);
     const showOrderUi = (_parts[0] === 'c');
 
@@ -18214,12 +18238,8 @@ function render(){
       (showOrderUi && state.currentListing ? orderDrawer(state.currentListing) : null),
     ].filter(Boolean));
 
-    root.appendChild(main);
-
-    // Floating scroll-to-top button for long lists (mobile friendly)
     const topBtn = el('button', { class:'toTopBtn' + (state.ui.showTop ? '' : ' is-hidden'), type:'button', title:(state.lang==='no'?'Til toppen':'Top'), 'aria-hidden': state.ui.showTop ? 'false' : 'true', onclick: ()=>scrollToTop() }, ['↑']);
-    root.appendChild(topBtn);
-
+    root.replaceChildren(main, topBtn);
 
     // After DOM is in place, initialize the portal map if the user is on Map view.
     const path = location.pathname;
@@ -18255,6 +18275,11 @@ function render(){
 }
 
 async function boot(){
+  if (window.__rm_boot_started){
+    return;
+  }
+  window.__rm_boot_started = true;
+
   if (!window.__rm_err_handlers){
     window.__rm_err_handlers = true;
     window.addEventListener('error', (e)=>{ console.error('Global error:', e.error || e.message || e); });
