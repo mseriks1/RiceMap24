@@ -5763,3 +5763,26 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:12px 0;}
     text-align:left;
   }
 }
+
+
+/* Step 9.83 — cleaner referral promo on dashboard */
+.dashReferralFocus{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:18px;
+  align-items:end;
+}
+.dashReferralFocus .dashGrowthTitle{
+  max-width:720px;
+}
+.dashReferralFocus .muted{
+  max-width:760px;
+  line-height:1.45;
+}
+.dashReferralFocus .row{
+  justify-content:flex-end;
+}
+@media (max-width:760px){
+  .dashReferralFocus{grid-template-columns:1fr;align-items:start;}
+  .dashReferralFocus .row{justify-content:flex-start;}
+}

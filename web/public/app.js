@@ -5047,8 +5047,8 @@ const Y = {
                 "inviteEmailSubject": "RiceMap24 invite",
                 "referralProgram": "Referral program",
                 "referralHeadline": "Lower your RiceMap24 cost by inviting other kitchens",
-                "referralDashHeadline": "Lower your monthly cost with referrals",
-                "referralDashIntro": "Share your invitation link with serious home kitchens and local food creators. Open the referral page to copy your link and see how the credit works.",
+                "referralDashHeadline": "Invite kitchens and let referrals pay part of your plan",
+                "referralDashIntro": "A few good referrals can reduce what you pay for RiceMap24 each month. Share your link with kitchens that are ready to sell more locally.",
                 "inviteKitchens": "Invite kitchens. Earn subscription credit.",
                 "referralIntro": "Invite home kitchens that could use RiceMap24. When someone you invite becomes an active paying member, you earn credit that can reduce your future subscription costs.",
                 "credit": "Credit",
@@ -5104,11 +5104,11 @@ const Y = {
                 "recommendedNext": "Recommended next steps",
                 "referral": "Referral",
                 "inviteShort": "Invite kitchens. Earn credit.",
-                "referralShort": "Earn 50% of their first month as credit. Invite a few serious kitchens and your own subscription can become much cheaper.",
+                "referralShort": "You earn 50% of their first month as credit when a referred kitchen becomes a paying member.",
                 "openReferral": "Open referral",
                 "referralExample": "Example: if you refer 2 kitchens per month on a similar plan, your own subscription can effectively be covered. That is 24 referred kitchens in a year.",
                 "copyReferralLink": "Copy referral link",
-                "referralTools": "Referral tools",
+                "referralTools": "Open referral page",
                 "accountSettings": "Account settings",
                 "accountSettingsText": "Manage account-level settings here. Page visibility is controlled in the published-page panel above.",
                 "dangerZoneTitle": "Danger zone",
@@ -5158,8 +5158,8 @@ const Y = {
                 "inviteEmailSubject": "Invitasjon til RiceMap24",
                 "referralProgram": "Vervingsprogram",
                 "referralHeadline": "Reduser RiceMap24-kostnaden din ved å verve andre kjøkken",
-                "referralDashHeadline": "Reduser månedsprisen din med verving",
-                "referralDashIntro": "Del vervelenken med seriøse hjemmekjøkken og lokale mataktører. Åpne vervingssiden for å kopiere lenken og se hvordan kreditten fungerer.",
+                "referralDashHeadline": "Verv kjøkken og la kreditten dekke deler av planen din",
+                "referralDashIntro": "Noen gode vervinger kan redusere det du betaler for RiceMap24 hver måned. Del lenken med kjøkken som er klare for å selge mer lokalt.",
                 "inviteKitchens": "Inviter kjøkken. Tjen abonnementskreditt.",
                 "referralIntro": "Inviter hjemmekjøkken som kan ha nytte av RiceMap24. Når noen du inviterer blir aktiv betalende kunde, får du kreditt som kan redusere dine fremtidige abonnementskostnader.",
                 "credit": "Kreditt",
@@ -7399,7 +7399,7 @@ const Y = {
     }
 
     function referralFocusCard(){
-      return infoCard(dashText('referralTools'), [
+      return infoCard(dashText('referralDashHeadline'), [
         el('div', { class:'dashReferralFocus' }, [
           el('div', {}, [
             el('div', { class:'dashGrowthLabel' }, [dashText('referral')]),
