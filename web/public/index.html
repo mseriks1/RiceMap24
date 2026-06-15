@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
   <!-- Core app CSS. Keep this local and blocking so the page gets the correct base style. -->
-  <link rel="stylesheet" href="/styles.css?v=9400" />
+  <link rel="stylesheet" href="/styles.css?v=9860" />
   <!-- Optional map CSS is non-blocking. The app must still start if CDN resources are slow/offline. -->
   <link rel="preload" as="style" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" onload="this.onload=null;this.rel='stylesheet'">
   <link rel="preload" as="style" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" onload="this.onload=null;this.rel='stylesheet'">
@@ -19,7 +19,7 @@
 <body>
   <div id="app"></div>
   <!-- Cache-bust for local iteration. Load the app before optional map libraries. -->
-  <script src="/app.js?v=9400" defer></script>
+  <script src="/app.js?v=9860" defer></script>
   <!-- Optional map libraries. async prevents a slow CDN from leaving pages blank. -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" async></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" async></script>

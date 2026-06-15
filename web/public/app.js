@@ -18203,9 +18203,9 @@ function render(){
   if (!root) return;
 
   try{
-    root.innerHTML = '';
-
-    // Only show the customer order UI on the public kitchen page (/c/:slug).
+    // Build the full route in memory first, then replace the root in one operation.
+    // This prevents stacked/duplicated page sections if a deploy/browser briefly runs
+    // overlapping renders while scrolling or switching owner tabs.
     const _parts = location.pathname.split('/').filter(Boolean);
     const showOrderUi = (_parts[0] === 'c');
 
@@ -18217,12 +18217,8 @@ function render(){
       (showOrderUi && state.currentListing ? orderDrawer(state.currentListing) : null),
     ].filter(Boolean));
 
-    root.appendChild(main);
-
-    // Floating scroll-to-top button for long lists (mobile friendly)
     const topBtn = el('button', { class:'toTopBtn' + (state.ui.showTop ? '' : ' is-hidden'), type:'button', title:(state.lang==='no'?'Til toppen':'Top'), 'aria-hidden': state.ui.showTop ? 'false' : 'true', onclick: ()=>scrollToTop() }, ['↑']);
-    root.appendChild(topBtn);
-
+    root.replaceChildren(main, topBtn);
 
     // After DOM is in place, initialize the portal map if the user is on Map view.
     const path = location.pathname;
@@ -18258,6 +18254,11 @@ function render(){
 }
 
 async function boot(){
+  if (window.__rm_boot_started){
+    return;
+  }
+  window.__rm_boot_started = true;
+
   if (!window.__rm_err_handlers){
     window.__rm_err_handlers = true;
     window.addEventListener('error', (e)=>{ console.error('Global error:', e.error || e.message || e); });

@@ -5837,3 +5837,9 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:12px 0;}
   .ownerDashReferralHero h2{font-size:34px;}
   .ownerDashReferralHero p{font-size:17px;}
 }
+
+/* Step 9.86: prevent accidental horizontal page duplication/side-scroll on owner pages. */
+html, body { max-width:100%; overflow-x:hidden; }
+#app, .main, .content { max-width:100%; overflow-x:hidden; }
+.ownerDashboardHome, .ownerKitchenPage, .ownerReferralPage, .ownerSupportPage { width:100%; min-width:0; }
+.ownerDashHero, .infocard, .dashGrowthCard, .dashActionCard, .ownerDashHeroPanel { min-width:0; }
