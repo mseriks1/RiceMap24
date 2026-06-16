@@ -7547,22 +7547,6 @@ const Y = {
               ? 'Bruk publiseringspanelet over for å publisere, avpublisere, forhåndsvise eller kopiere kundelenken.'
               : 'Use the published-page panel above to publish, unpublish, preview or copy the customer link.'
             ])
-          ]),
-          el('div', { class:'accountControlPanel accountSecurityPanel' }, [
-            el('div', { class:'dashGrowthLabel' }, [no ? 'Sikkerhet' : 'Security']),
-            el('div', { class:'dashGrowthTitle' }, [no ? 'Endre passord' : 'Change password']),
-            el('div', { class:'muted small' }, [no
-              ? 'Oppdater passordet for denne kjøkkenkontoen. Du trenger nåværende passord for å endre det.'
-              : 'Update the password for this kitchen account. You need the current password to change it.'
-            ]),
-            el('div', { class:'accountSecurityGrid', style:'margin-top:12px' }, [
-              el('label', {}, [el('span', { class:'muted small' }, [no?'Nåværende passord':'Current password']), el('input', { class:'input', id:'owner_current_password', type:'password', autocomplete:'current-password' })]),
-              el('label', {}, [el('span', { class:'muted small' }, [no?'Nytt passord':'New password']), el('input', { class:'input', id:'owner_new_password', type:'password', autocomplete:'new-password', placeholder:no?'Minst 6 tegn':'At least 6 characters' })]),
-              el('label', {}, [el('span', { class:'muted small' }, [no?'Gjenta nytt passord':'Repeat new password']), el('input', { class:'input', id:'owner_repeat_password', type:'password', autocomplete:'new-password' })])
-            ]),
-            el('div', { class:'row', style:'gap:10px; margin-top:12px; flex-wrap:wrap' }, [
-              button(no ? 'Oppdater passord' : 'Update password', { variant:'primary', onclick:changeOwnerPassword, disabled:ownerState.savingListing })
-            ])
           ])
         ])
       ]);
@@ -7602,21 +7586,21 @@ const Y = {
     function accountSecurityCard(){
       const no = state.lang === 'no';
       const ownerState = _ensureOwnerState(token);
-      return infoCard(no ? 'Kontosikkerhet' : 'Account security', [
+      return infoCard(no ? 'Account security' : 'Account security', [
         el('div', { class:'muted' }, [no
-          ? 'Endre passordet for kjøkkenkontoen. Dette ligger rett over fareområdet fordi det handler om konto og sikkerhet.'
-          : 'Change the password for this kitchen account. This sits above Danger Zone because it belongs to account and security.'
+          ? 'Endre passordet for kjøkkenkontoen. Dette ligger rett over Danger Zone.'
+          : 'Change the password for this kitchen account. This sits right above Danger Zone.'
         ]),
-        el('div', { class:'accountControlPanel', style:'margin-top:12px' }, [
-          el('div', { class:'dashGrowthLabel' }, [no ? 'Passord' : 'Password']),
-          el('div', { class:'dashGrowthTitle' }, [no ? 'Endre passord' : 'Change password']),
+        el('div', { class:'accountControlPanel accountPasswordPanel', style:'margin-top:12px' }, [
+          el('div', { class:'dashGrowthLabel' }, [no ? 'PASSWORD' : 'PASSWORD']),
+          el('div', { class:'dashGrowthTitle' }, [no ? 'Change password' : 'Change password']),
           el('div', { class:'accountSecurityGrid', style:'margin-top:12px' }, [
-            el('label', {}, [el('span', { class:'muted small' }, [no?'Nåværende passord':'Current password']), el('input', { class:'input', id:'owner_current_password', type:'password', autocomplete:'current-password' })]),
-            el('label', {}, [el('span', { class:'muted small' }, [no?'Nytt passord':'New password']), el('input', { class:'input', id:'owner_new_password', type:'password', autocomplete:'new-password', placeholder:no?'Minst 6 tegn':'At least 6 characters' })]),
-            el('label', {}, [el('span', { class:'muted small' }, [no?'Gjenta nytt passord':'Repeat new password']), el('input', { class:'input', id:'owner_repeat_password', type:'password', autocomplete:'new-password' })])
+            el('label', {}, [el('span', { class:'muted small' }, [no?'Current password':'Current password']), el('input', { class:'input', id:'owner_current_password', type:'password', autocomplete:'current-password' })]),
+            el('label', {}, [el('span', { class:'muted small' }, [no?'New password':'New password']), el('input', { class:'input', id:'owner_new_password', type:'password', autocomplete:'new-password', placeholder:no?'At least 6 characters':'At least 6 characters' })]),
+            el('label', {}, [el('span', { class:'muted small' }, [no?'Repeat new password':'Repeat new password']), el('input', { class:'input', id:'owner_repeat_password', type:'password', autocomplete:'new-password' })])
           ]),
           el('div', { class:'row', style:'gap:10px; margin-top:12px; flex-wrap:wrap' }, [
-            button(no ? 'Oppdater passord' : 'Update password', { variant:'primary', onclick:changeOwnerPassword, disabled:ownerState.savingListing })
+            button(no ? 'Update password' : 'Update password', { variant:'primary', onclick:changeOwnerPassword, disabled:ownerState.savingListing })
           ])
         ])
       ]);
@@ -7662,6 +7646,7 @@ const Y = {
         launchControlCard(),
         growthToolsCard(),
         accountSettingsCard(),
+        accountSecurityCard(),
         dangerZoneCard()
       ]);
     }
