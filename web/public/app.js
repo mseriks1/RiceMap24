@@ -7528,6 +7528,7 @@ const Y = {
 
     function accountSettingsCard(){
       const no = state.lang === 'no';
+      const ownerState = _ensureOwnerState(token);
       return infoCard(dashText('accountSettings'), [
         el('div', { class:'muted' }, [dashText('accountSettingsText')]),
         el('div', { class:'accountControlGrid', style:'margin-top:12px' }, [
@@ -7545,6 +7546,22 @@ const Y = {
             el('div', { class:'muted small' }, [no
               ? 'Bruk publiseringspanelet over for å publisere, avpublisere, forhåndsvise eller kopiere kundelenken.'
               : 'Use the published-page panel above to publish, unpublish, preview or copy the customer link.'
+            ])
+          ]),
+          el('div', { class:'accountControlPanel accountSecurityPanel' }, [
+            el('div', { class:'dashGrowthLabel' }, [no ? 'Sikkerhet' : 'Security']),
+            el('div', { class:'dashGrowthTitle' }, [no ? 'Endre passord' : 'Change password']),
+            el('div', { class:'muted small' }, [no
+              ? 'Oppdater passordet for denne kjøkkenkontoen. Du trenger nåværende passord for å endre det.'
+              : 'Update the password for this kitchen account. You need the current password to change it.'
+            ]),
+            el('div', { class:'accountSecurityGrid', style:'margin-top:12px' }, [
+              el('label', {}, [el('span', { class:'muted small' }, [no?'Nåværende passord':'Current password']), el('input', { class:'input', id:'owner_current_password', type:'password', autocomplete:'current-password' })]),
+              el('label', {}, [el('span', { class:'muted small' }, [no?'Nytt passord':'New password']), el('input', { class:'input', id:'owner_new_password', type:'password', autocomplete:'new-password', placeholder:no?'Minst 6 tegn':'At least 6 characters' })]),
+              el('label', {}, [el('span', { class:'muted small' }, [no?'Gjenta nytt passord':'Repeat new password']), el('input', { class:'input', id:'owner_repeat_password', type:'password', autocomplete:'new-password' })])
+            ]),
+            el('div', { class:'row', style:'gap:10px; margin-top:12px; flex-wrap:wrap' }, [
+              button(no ? 'Oppdater passord' : 'Update password', { variant:'primary', onclick:changeOwnerPassword, disabled:ownerState.savingListing })
             ])
           ])
         ])
@@ -7645,7 +7662,6 @@ const Y = {
         launchControlCard(),
         growthToolsCard(),
         accountSettingsCard(),
-        accountSecurityCard(),
         dangerZoneCard()
       ]);
     }
