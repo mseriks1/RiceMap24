@@ -7551,6 +7551,60 @@ const Y = {
       ]);
     }
 
+    async function changeOwnerPassword(){
+      const no = state.lang === 'no';
+      const current_password = document.getElementById('owner_current_password')?.value || '';
+      const new_password = document.getElementById('owner_new_password')?.value || '';
+      const repeat_password = document.getElementById('owner_repeat_password')?.value || '';
+      if (!current_password || !new_password || !repeat_password){
+        alert(no ? 'Fyll ut alle passordfeltene.' : 'Fill in all password fields.');
+        return;
+      }
+      if (new_password.length < 6){
+        alert(no ? 'Nytt passord må være minst 6 tegn.' : 'New password must be at least 6 characters.');
+        return;
+      }
+      if (new_password !== repeat_password){
+        alert(no ? 'De nye passordene er ikke like.' : 'The new passwords do not match.');
+        return;
+      }
+      const ownerState = _ensureOwnerState(token);
+      ownerState.savingListing = true;
+      render();
+      try{
+        await apiJson('POST', '/api/auth/change-password', { current_password, new_password, repeat_password }, { timeoutMs:12000 });
+        alert(no ? 'Passordet er oppdatert.' : 'Password updated.');
+      }catch(e){
+        alert((no ? 'Kunne ikke endre passord: ' : 'Could not change password: ') + (e.message || e));
+      }finally{
+        ownerState.savingListing = false;
+        render();
+      }
+    }
+
+    function accountSecurityCard(){
+      const no = state.lang === 'no';
+      const ownerState = _ensureOwnerState(token);
+      return infoCard(no ? 'Kontosikkerhet' : 'Account security', [
+        el('div', { class:'muted' }, [no
+          ? 'Endre passordet for kjøkkenkontoen. Dette ligger rett over fareområdet fordi det handler om konto og sikkerhet.'
+          : 'Change the password for this kitchen account. This sits above Danger Zone because it belongs to account and security.'
+        ]),
+        el('div', { class:'accountControlPanel', style:'margin-top:12px' }, [
+          el('div', { class:'dashGrowthLabel' }, [no ? 'Passord' : 'Password']),
+          el('div', { class:'dashGrowthTitle' }, [no ? 'Endre passord' : 'Change password']),
+          el('div', { class:'accountSecurityGrid', style:'margin-top:12px' }, [
+            el('label', {}, [el('span', { class:'muted small' }, [no?'Nåværende passord':'Current password']), el('input', { class:'input', id:'owner_current_password', type:'password', autocomplete:'current-password' })]),
+            el('label', {}, [el('span', { class:'muted small' }, [no?'Nytt passord':'New password']), el('input', { class:'input', id:'owner_new_password', type:'password', autocomplete:'new-password', placeholder:no?'Minst 6 tegn':'At least 6 characters' })]),
+            el('label', {}, [el('span', { class:'muted small' }, [no?'Gjenta nytt passord':'Repeat new password']), el('input', { class:'input', id:'owner_repeat_password', type:'password', autocomplete:'new-password' })])
+          ]),
+          el('div', { class:'row', style:'gap:10px; margin-top:12px; flex-wrap:wrap' }, [
+            button(no ? 'Oppdater passord' : 'Update password', { variant:'primary', onclick:changeOwnerPassword, disabled:ownerState.savingListing })
+          ])
+        ])
+      ]);
+    }
+
     function dangerZoneCard(){
       const no = state.lang === 'no';
       const ownerState = _ensureOwnerState(token);
@@ -7591,6 +7645,7 @@ const Y = {
         launchControlCard(),
         growthToolsCard(),
         accountSettingsCard(),
+        accountSecurityCard(),
         dangerZoneCard()
       ]);
     }
@@ -16693,6 +16748,30 @@ el('div', { class:'row', style:'gap:10px; flex-wrap:wrap; margin-top:10px' }, [
       updateMeta(it.id, { access_type:'paid', access_expires_at:'', access_reason:'', feature_overrides:{} });
     }
 
+    async function adminSetOwnerPassword(it){
+      const no = state.lang === 'no';
+      const name = it.name || it.slug || ('#'+it.id);
+      const new_password = document.getElementById('admin_new_password_'+it.id)?.value || '';
+      const repeat_password = document.getElementById('admin_repeat_password_'+it.id)?.value || '';
+      if (new_password.length < 6){
+        alert(no ? 'Nytt passord må være minst 6 tegn.' : 'New password must be at least 6 characters.');
+        return;
+      }
+      if (new_password !== repeat_password){
+        alert(no ? 'Passordene er ikke like.' : 'Passwords do not match.');
+        return;
+      }
+      if (!confirm((no ? 'Sette nytt passord for ' : 'Set new password for ') + name + '?')) return;
+      try{
+        await apiJson('POST', adminUrl(`/api/admin/listings/${it.id}/password`), { new_password, repeat_password }, { timeoutMs:12000 });
+        document.getElementById('admin_new_password_'+it.id).value = '';
+        document.getElementById('admin_repeat_password_'+it.id).value = '';
+        alert(no ? 'Passordet er oppdatert.' : 'Password updated.');
+      }catch(e){
+        alert((no ? 'Kunne ikke oppdatere passord: ' : 'Could not update password: ') + (e.message || e));
+      }
+    }
+
     function compactLine(it){
       const access = String(it.access_type || 'paid');
       const activeNonPaid = access !== 'paid';
@@ -16740,6 +16819,23 @@ el('div', { class:'row', style:'gap:10px; flex-wrap:wrap; margin-top:10px' }, [
             button(state.lang==='no'?'Marker betalt':'Mark paid', { variant:'outline', onclick:()=>quickAccessPreset(it,'prodpaid') }),
             button(state.lang==='no'?'Forfalt':'Past due', { variant:'outline', onclick:()=>quickAccessPreset(it,'pastdue') }),
             button(state.lang==='no'?'Avslutt':'Cancel account', { variant:'outline', onclick:()=>quickAccessPreset(it,'cancel') })
+          ])
+        ]),
+        el('div', { class:'adminPasswordResetBox' }, [
+          el('div', {}, [
+            el('strong', {}, [state.lang==='no'?'Sett nytt innloggingspassord':'Set new login password']),
+            el('p', { class:'muted small' }, [state.lang==='no'
+              ? 'Brukes når en testbruker eller aktør har glemt passordet. Du ser ikke gammelt passord; du setter bare et nytt.'
+              : 'Use when a test user or kitchen owner has forgotten the password. You cannot see the old password; set a new one.'
+            ]),
+            el('div', { class:'muted small' }, [(state.lang==='no'?'Login e-post: ':'Login email: ') + ((it.contact && it.contact.email) || it.contact_email || it.owner_email || '—')])
+          ]),
+          el('div', { class:'adminAccessGrid' }, [
+            el('label', {}, [el('span', { class:'muted small' }, [state.lang==='no'?'Nytt passord':'New password']), el('input', { class:'input', id:'admin_new_password_'+it.id, type:'password', autocomplete:'new-password', placeholder:state.lang==='no'?'Minst 6 tegn':'At least 6 characters' })]),
+            el('label', {}, [el('span', { class:'muted small' }, [state.lang==='no'?'Gjenta passord':'Repeat password']), el('input', { class:'input', id:'admin_repeat_password_'+it.id, type:'password', autocomplete:'new-password' })])
+          ]),
+          el('div', { class:'row', style:'gap:8px; flex-wrap:wrap; margin-top:10px' }, [
+            button(state.lang==='no'?'Oppdater passord':'Update password', { variant:'outline', onclick:()=>adminSetOwnerPassword(it) })
           ])
         ]),
         el('div', { class:'adminAccessGrid' }, [

@@ -2211,6 +2211,46 @@ def create_app_user(email: str, password: str, *, display_name: str = "", role: 
         conn.close()
 
 
+
+def update_app_user_password(user_id: int, new_password: str) -> Dict[str, Any]:
+    if len(new_password or "") < 6:
+        raise ValueError("Password must be at least 6 characters")
+    pw_hash = hash_password(new_password)
+    conn = connect()
+    try:
+        cur = conn.execute(
+            "UPDATE app_users SET password_hash=?, updated_at=datetime('now') WHERE id=?",
+            (pw_hash, int(user_id)),
+        )
+        conn.commit()
+        if getattr(cur, "rowcount", 0) == 0:
+            raise KeyError("User not found")
+        row = conn.execute("SELECT * FROM app_users WHERE id=?", (int(user_id),)).fetchone()
+        return _user_row_to_dict(row) or {}
+    finally:
+        conn.close()
+
+
+def update_app_user_password_for_listing(listing_id: int, new_password: str) -> Dict[str, Any]:
+    if len(new_password or "") < 6:
+        raise ValueError("Password must be at least 6 characters")
+    pw_hash = hash_password(new_password)
+    conn = connect()
+    try:
+        row = conn.execute(
+            "SELECT * FROM app_users WHERE listing_id=? AND role='owner' ORDER BY id DESC LIMIT 1",
+            (int(listing_id),),
+        ).fetchone()
+        if not row:
+            raise KeyError("No owner login found for this kitchen")
+        uid = int(row["id"])
+        conn.execute("UPDATE app_users SET password_hash=?, active=1, updated_at=datetime('now') WHERE id=?", (pw_hash, uid))
+        conn.commit()
+        row = conn.execute("SELECT * FROM app_users WHERE id=?", (uid,)).fetchone()
+        return _user_row_to_dict(row) or {}
+    finally:
+        conn.close()
+
 def get_app_user_by_email(email: str) -> Optional[Dict[str, Any]]:
     conn = connect()
     try:

@@ -5843,3 +5843,19 @@ html, body { max-width:100%; overflow-x:hidden; }
 #app, .main, .content { max-width:100%; overflow-x:hidden; }
 .ownerDashboardHome, .ownerKitchenPage, .ownerReferralPage, .ownerSupportPage { width:100%; min-width:0; }
 .ownerDashHero, .infocard, .dashGrowthCard, .dashActionCard, .ownerDashHeroPanel { min-width:0; }
+
+.accountSecurityGrid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+}
+.adminPasswordResetBox{
+  border:1px solid rgba(20,45,32,.12);
+  border-radius:18px;
+  padding:14px;
+  background:#fffaf1;
+  margin-bottom:14px;
+}
+@media (max-width: 760px){
+  .accountSecurityGrid{ grid-template-columns:1fr; }
+}

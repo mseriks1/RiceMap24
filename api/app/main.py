@@ -130,6 +130,9 @@ from .db import (
     connect,
     set_listing_coordinates,
     reset_admin_app_users,
+    verify_password,
+    update_app_user_password,
+    update_app_user_password_for_listing,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -9779,6 +9782,33 @@ async def auth_me(request: Request):
     return _auth_user_response(user)
 
 
+@app.post("/api/auth/change-password")
+async def auth_change_password(payload: dict, request: Request):
+    user = _require_session_user(request, roles={"owner", "admin"})
+    p = payload or {}
+    current_password = str(p.get("current_password") or "")
+    new_password = str(p.get("new_password") or "")
+    repeat_password = str(p.get("repeat_password") or "")
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+    if new_password != repeat_password:
+        raise HTTPException(status_code=400, detail="New passwords do not match")
+    email = str(user.get("email") or "")
+    if not authenticate_app_user(email, current_password):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    try:
+        updated = update_app_user_password(int(user.get("id") or 0), new_password)
+        try:
+            log_admin_activity("owner_password_changed", actor=email, entity_type="app_user", entity_id=int(updated.get("id") or 0), listing_id=updated.get("listing_id"), title="Owner changed password", details={"email": email})
+        except Exception:
+            pass
+        return {"ok": True, "user": updated}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Password update failed: {type(exc).__name__}: {str(exc)}")
+
+
 @app.get("/api/auth/bootstrap-status")
 async def auth_bootstrap_status(request: Request, key: Optional[str] = None):
     """Expose only safe bootstrap information for the admin login screen.
@@ -10705,6 +10735,48 @@ def admin_update_listing(listing_id: int, payload: dict, request: Request, key: 
         raise HTTPException(status_code=404, detail="Not found")
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/admin/listings/{listing_id}/password")
+def admin_set_listing_password(listing_id: int, payload: dict, request: Request, key: Optional[str] = None):
+    _check_admin(key, request=request)
+    p = payload or {}
+    new_password = str(p.get("new_password") or "")
+    repeat_password = str(p.get("repeat_password") or "")
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    if new_password != repeat_password:
+        raise HTTPException(status_code=400, detail="Passwords do not match")
+    listing = get_by_id(listing_id)
+    if not listing:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    try:
+        try:
+            user = update_app_user_password_for_listing(listing_id, new_password)
+        except KeyError:
+            # Demo/seed kitchens may not have an app_users row yet. In that case,
+            # create an owner login from the listing contact email so test actors
+            # can be logged into immediately from staging.
+            contact = listing.get("contact") if isinstance(listing.get("contact"), dict) else {}
+            email = str(listing.get("owner_email") or listing.get("contact_email") or contact.get("email") or "").strip().lower()
+            if not email or "@" not in email:
+                raise KeyError("No owner login or contact email found for this kitchen")
+            existing = get_app_user_by_email(email)
+            if existing:
+                user = update_app_user_password(int(existing.get("id") or 0), new_password)
+            else:
+                user = create_app_user(email, new_password, display_name=str(listing.get("owner_name") or listing.get("name") or "Kitchen owner"), role="owner", listing_id=listing_id, active=True, email_verified=False)
+        try:
+            log_admin_activity("admin_reset_owner_password", entity_type="app_user", entity_id=int(user.get("id") or 0), listing_id=listing_id, customer_no=listing.get("customer_no") or "", title=listing.get("name") or f"Listing {listing_id}", details={"owner_email": user.get("email")})
+        except Exception:
+            pass
+        return {"ok": True, "user": user}
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Password reset failed: {type(exc).__name__}: {str(exc)}")
 
 
 @app.post("/api/admin/listings/{listing_id}/activate")
