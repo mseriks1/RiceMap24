@@ -7548,6 +7548,27 @@ const Y = {
               : 'Use the published-page panel above to publish, unpublish, preview or copy the customer link.'
             ])
           ])
+        ]),
+        el('div', { class:'accountPasswordCallout', id:'owner-password-panel', style:'margin-top:18px' }, [
+          el('div', { class:'accountPasswordCalloutHeader' }, [
+            el('div', {}, [
+              el('div', { class:'ownerDashKicker' }, [no ? 'KONTOSIKKERHET' : 'ACCOUNT SECURITY']),
+              el('h3', {}, [no ? 'Endre passord' : 'Change password'])
+            ]),
+            el('div', { class:'muted small' }, [no ? 'Synlig test: Step 9.92' : 'Visible check: Step 9.92'])
+          ]),
+          el('p', { class:'muted', style:'margin-top:6px' }, [no
+            ? 'Bruk dette feltet for å endre passordet til kjøkkenkontoen. Dette panelet skal ligge i Account settings, rett over Danger Zone.'
+            : 'Use this section to change the password for the kitchen account. This panel should sit inside Account settings, directly above Danger Zone.'
+          ]),
+          el('div', { class:'accountSecurityGrid', style:'margin-top:14px' }, [
+            el('label', {}, [el('span', { class:'muted small' }, [no?'Nåværende passord':'Current password']), el('input', { class:'input', id:'owner_current_password', type:'password', autocomplete:'current-password' })]),
+            el('label', {}, [el('span', { class:'muted small' }, [no?'Nytt passord':'New password']), el('input', { class:'input', id:'owner_new_password', type:'password', autocomplete:'new-password', placeholder:no?'Minst 6 tegn':'At least 6 characters' })]),
+            el('label', {}, [el('span', { class:'muted small' }, [no?'Gjenta nytt passord':'Repeat new password']), el('input', { class:'input', id:'owner_repeat_password', type:'password', autocomplete:'new-password' })])
+          ]),
+          el('div', { class:'row', style:'gap:10px; margin-top:14px; flex-wrap:wrap' }, [
+            button(no ? 'Oppdater passord' : 'Update password', { variant:'primary', onclick:changeOwnerPassword, disabled:ownerState.savingListing })
+          ])
         ])
       ]);
     }
@@ -7646,7 +7667,6 @@ const Y = {
         launchControlCard(),
         growthToolsCard(),
         accountSettingsCard(),
-        accountSecurityCard(),
         dangerZoneCard()
       ]);
     }

@@ -5859,3 +5859,29 @@ html, body { max-width:100%; overflow-x:hidden; }
 @media (max-width: 760px){
   .accountSecurityGrid{ grid-template-columns:1fr; }
 }
+
+/* Step 9.92 — make owner password change impossible to miss inside Account settings */
+.accountPasswordCallout{
+  border:2px solid rgba(20,74,45,.24);
+  border-radius:24px;
+  padding:22px;
+  background:linear-gradient(135deg,#f7fbf4 0%,#fffaf1 100%);
+  box-shadow:0 16px 40px rgba(20,45,32,.08);
+}
+.accountPasswordCalloutHeader{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  flex-wrap:wrap;
+}
+.accountPasswordCallout h3{
+  margin:4px 0 0;
+  font-size:clamp(26px,2.4vw,38px);
+  line-height:1.05;
+  color:#123f26;
+  letter-spacing:-.035em;
+}
+.accountPasswordCallout .input{
+  background:#fff;
+}
