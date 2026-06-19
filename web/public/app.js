@@ -7527,6 +7527,8 @@ const Y = {
     function accountSettingsCard(){
       const no = state.lang === 'no';
       const ownerState = _ensureOwnerState(token);
+      const viewingAsAdmin = isAdminView && isAdminViewingKitchen();
+      const kitchenAccountEmail = String(listing?.owner_email || listing?.contact_email || listing?.contact?.email || '—');
       return infoCard(dashText('accountSettings'), [
         el('div', { class:'muted' }, [dashText('accountSettingsText')]),
         el('div', { class:'accountControlGrid', style:'margin-top:12px' }, [
@@ -7547,7 +7549,18 @@ const Y = {
             ])
           ])
         ]),
-        el('div', { class:'accountPasswordCallout', id:'owner-password-panel', style:'margin-top:18px' }, [
+        el('div', { class:'accountPasswordCallout', id:'owner-password-panel', style:'margin-top:18px' }, viewingAsAdmin ? [
+          el('div', { class:'accountPasswordCalloutTitle' }, [no ? 'Kjøkkenkonto' : 'Kitchen account']),
+          el('div', { class:'accountIdentityRow' }, [
+            el('div', { class:'muted small' }, [no ? 'E-post for denne aktøren' : 'Email for this kitchen']),
+            el('div', { class:'accountIdentityEmail' }, [kitchenAccountEmail])
+          ]),
+          el('div', { class:'accountPasswordDivider' }, []),
+          el('p', { class:'muted small', style:'margin-top:4px' }, [no
+            ? 'Dette er en skrivebeskyttet adminvisning. Endre passord fra Admin access.'
+            : 'This is a read-only admin view. Change the password from Admin access.'
+          ])
+        ] : [
           el('div', { class:'accountPasswordCalloutTitle' }, [no ? 'Kontosikkerhet' : 'Account security']),
           el('div', { class:'accountIdentityRow' }, [
             el('div', { class:'muted small' }, [no ? 'Logget inn som' : 'Signed in as']),
