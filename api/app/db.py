@@ -970,6 +970,39 @@ def _migrate(conn: sqlite3.Connection) -> None:
     except Exception:
         pass
 
+    # Reconcile legacy JSON snapshots with the authoritative listing columns.
+    # Earlier code could leave data_json stale after updates. Without this repair,
+    # a selected row could expose the right numeric id/URL but show another kitchen's
+    # name or core page data. This repair never changes the database identity columns;
+    # it only refreshes their duplicate JSON representation.
+    try:
+        core_rows = conn.execute(
+            "SELECT id, slug, name, area, city, country, postcode, cuisines, badges, from_price, currency, hero_image, lat, lng, data_json FROM listings ORDER BY id ASC"
+        ).fetchall()
+        for row in core_rows:
+            lid = int(row["id"] if isinstance(row, sqlite3.Row) else row[0])
+            raw_json = row["data_json"] if isinstance(row, sqlite3.Row) else row[-1]
+            try:
+                data = json.loads(raw_json or "{}")
+            except Exception:
+                data = {}
+            if not isinstance(data, dict):
+                data = {}
+            before = json.dumps(data, ensure_ascii=False, sort_keys=True)
+            for field in ("slug", "name", "area", "city", "country", "postcode", "from_price", "currency", "hero_image", "lat", "lng"):
+                data[field] = row[field]
+            for field in ("cuisines", "badges"):
+                raw = row[field]
+                try:
+                    data[field] = json.loads(raw) if isinstance(raw, str) else (raw or [])
+                except Exception:
+                    data[field] = []
+            after = json.dumps(data, ensure_ascii=False, sort_keys=True)
+            if after != before:
+                conn.execute("UPDATE listings SET data_json=?, updated_at=datetime('now') WHERE id=?", (json.dumps(data, ensure_ascii=False), lid))
+    except Exception:
+        pass
+
     # Ensure older/demo listings also have a preview token for admin "View as kitchen".
     try:
         missing_tokens = conn.execute(
@@ -2475,13 +2508,37 @@ def init_db() -> None:
         conn.close()
 
 def row_to_listing(row: sqlite3.Row) -> Dict[str, Any]:
-    item = json.loads(row["data_json"])
-    # inject meta / db ids for frontend use
-    item["id"] = int(row["id"])
-    item["customer_no"] = row["customer_no"] if "customer_no" in set(row.keys()) and row["customer_no"] else listing_customer_no(int(row["id"]))
-    item["published"] = int(row["published"])
-    # sqlite Row supports .keys()
+    """Hydrate a listing with database columns as the canonical identity source.
+
+    Listings historically store a full JSON snapshot *and* indexed database columns.
+    The columns are the authoritative values for id, slug, name and other core
+    directory fields.  A stale JSON snapshot must never be allowed to pair one
+    listing's id/slug with another listing's name or images in the UI.
+    """
+    try:
+        item = json.loads(row["data_json"] or "{}")
+    except Exception:
+        item = {}
+    if not isinstance(item, dict):
+        item = {}
     keys = set(row.keys())
+
+    # Canonical identity and directory fields: always take these from the selected
+    # database row, never from data_json. This is essential for admin View as
+    # kitchen and for normal public/owner pages alike.
+    item["id"] = int(row["id"])
+    for field in ("slug", "name", "area", "city", "country", "postcode", "from_price", "currency", "hero_image"):
+        if field in keys:
+            item[field] = row[field]
+    for field in ("cuisines", "badges"):
+        if field in keys:
+            raw = row[field]
+            try:
+                item[field] = json.loads(raw) if isinstance(raw, str) else (raw or [])
+            except Exception:
+                item[field] = []
+    item["customer_no"] = row["customer_no"] if "customer_no" in keys and row["customer_no"] else listing_customer_no(int(row["id"]))
+    item["published"] = int(row["published"])
     item["plan"] = row["plan"] if "plan" in keys else item.get("plan", "basic")
     item["billing"] = row["billing"] if "billing" in keys else item.get("billing", "monthly")
     item["plan_active"] = int(row["plan_active"]) if "plan_active" in keys else int(item.get("plan_active", 1))

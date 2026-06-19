@@ -11743,22 +11743,36 @@ async function loadAdminKitchenView(listingId, expectedSlug){
   const id = Number(listingId || 0);
   const slug = String(expectedSlug || '').trim();
   if (!Number.isInteger(id) || id <= 0 || !slug) throw new Error('Invalid kitchen identifier');
+
+  // Bind this asynchronous response to the exact route that started it. A slower
+  // request from a previously opened kitchen must never overwrite the newer view.
+  const viewKey = `admin:${id}:${slug}`;
+  const requestPath = `/admin-view/${encodeURIComponent(String(id))}/${encodeURIComponent(slug)}`;
+  state.preview.viewKey = viewKey;
   const data = await apiGet(adminUrl(`/api/admin/listings/${id}/view-as?slug=${encodeURIComponent(slug)}`), { cache: 'no-store' });
-  const returnedSlug = String(data?.listing?.slug || '').trim();
-  if (!data || Number(data.listing_id) !== id || !data.listing || returnedSlug !== slug) {
+
+  const routeStillMatches = location.pathname === requestPath;
+  if (state.preview.viewKey !== viewKey || !routeStillMatches) return;
+
+  const listing = data && data.listing;
+  const returnedId = Number(data?.listing_id);
+  const listingIdFromPayload = Number(listing?.id);
+  const returnedSlug = String(listing?.slug || '').trim();
+  if (!data || !listing || returnedId !== id || listingIdFromPayload !== id || returnedSlug !== slug) {
     throw new Error('Could not verify the selected kitchen');
   }
   const token = String(data.preview_token || '').trim();
   if (!token) throw new Error('Could not prepare this kitchen dashboard');
+
   state.preview.token = token;
   state.preview.active = true;
   state.preview.adminView = true;
   state.preview.adminListingId = id;
   state.preview.adminListingSlug = slug;
-  state.preview.viewKey = `admin:${id}:${slug}`;
+  state.preview.viewKey = viewKey;
   state.preview.err = null;
   state.__route_err = null;
-  state.currentListing = data.listing;
+  state.currentListing = listing;
   render();
 }
 
