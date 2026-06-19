@@ -1210,6 +1210,7 @@ function adminUrl(path){
 async function adminCheckAuth(){
   try{
     const data = await apiGet('/api/auth/me');
+    applyAuthData(data);
     state.admin.authenticated = !!data.authenticated;
     state.admin.authUser = data.user || null;
     state.admin.loginError = '';
@@ -1255,6 +1256,7 @@ async function adminLogin(){
   state.admin.loginBusy = true; state.admin.loginError=''; render();
   try{
     const data = await apiJson('POST', '/api/auth/login', { email, password });
+    applyAuthData(data);
     state.admin.authenticated = true;
     state.admin.authUser = data.user || null;
     state.admin.loginPassword = '';
@@ -1269,11 +1271,7 @@ async function adminLogin(){
   }
 }
 async function adminLogout(){
-  try{ await apiJson('POST', '/api/auth/logout', {}); }catch(e){}
-  state.admin.authenticated = false;
-  state.admin.authUser = null;
-  state.admin.items._loadedOnce = false;
-  render();
+  await logoutCurrentSession('/');
 }
 async function adminCreateLocalAdmin(){
   const email = String(state.admin.loginEmail || '').trim();
@@ -2103,7 +2101,7 @@ function topBar(){
               ]),
       el('div', { class:'topbar-actions' }, [
         isOwnerContext() && ownerDashboardPath() ? button(authT('myDashboard'), { variant:'outline', onclick: ()=>navigate(ownerDashboardPath()), className:'ownerDashboardShortcut' }) : null,
-        isOwnerContext() ? button(authT('logout'), { variant:'outline', onclick: ownerLogout, className:'ownerLogoutBtn' }) : (!(location.pathname || '').startsWith('/login') ? button(authT('login'), { variant:'outline', onclick: ()=>navigate('/login'), className:'ownerLoginBtn' }) : null),
+        isAnyUserLoggedIn() ? button(authT('logout'), { variant:'outline', onclick: logoutFromTopbar, className:'ownerLogoutBtn' }) : (!(location.pathname || '').startsWith('/login') ? button(authT('login'), { variant:'outline', onclick: ()=>navigate('/login'), className:'ownerLoginBtn' }) : null),
         !isOwnerContext() ? button(authT('registerKitchen'), { onclick: ()=>navigate('/list'), className:'registerKitchenBtn' }) : null,
       ].filter(Boolean))
     ]),
@@ -11844,14 +11842,20 @@ function isOwnerLoggedIn(){
   return !!(state.auth && state.auth.authenticated && state.auth.owner_dashboard);
 }
 
-async function ownerLogout(){
-  try { await apiJson('POST', '/api/auth/logout', {}); } catch(_) {}
+function isAnyUserLoggedIn(){
+  return !!((state.auth && state.auth.authenticated) || (state.admin && state.admin.authenticated));
+}
+
+function clearSessionUiState(){
   state.auth.checked = true;
   state.auth.authenticated = false;
   state.auth.user = null;
   state.auth.owner_dashboard = null;
   state.auth.loginPassword = '';
   state.auth.error = '';
+  state.admin.authenticated = false;
+  state.admin.authUser = null;
+  state.admin.items._loadedOnce = false;
   try {
     localStorage.removeItem('rm_owner_dashboard_token');
     localStorage.removeItem('rm_owner_token');
@@ -11862,7 +11866,20 @@ async function ownerLogout(){
     state.ui.ownerDashboardToken = '';
     state.ui.ownerSessionActive = false;
   }
-  navigate('/login');
+}
+
+async function logoutCurrentSession(redirectPath='/'){
+  try { await apiJson('POST', '/api/auth/logout', {}); } catch(_) {}
+  clearSessionUiState();
+  navigate(redirectPath);
+}
+
+async function logoutFromTopbar(){
+  await logoutCurrentSession('/');
+}
+
+async function ownerLogout(){
+  await logoutCurrentSession('/login');
 }
 
 function navigate(path){
