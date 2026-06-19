@@ -10681,17 +10681,30 @@ def admin_stripe_simulate(payload: dict, request: Request, key: Optional[str] = 
 
 
 @app.get("/api/admin/listings/{listing_id}/view-as")
-def admin_get_view_as_kitchen(listing_id: int, request: Request, key: Optional[str] = None):
-    """Return the exact selected listing for the read-only admin kitchen view."""
+def admin_get_view_as_kitchen(listing_id: int, request: Request, slug: str, key: Optional[str] = None):
+    """Return one verified listing for read-only admin inspection.
+
+    Both the immutable listing id and the visible canonical slug must match the same
+    database row. This prevents a stale or malformed browser route from silently
+    opening a different kitchen.
+    """
     _check_admin(key, request=request)
     listing_id = int(listing_id)
+    expected_slug = str(slug or "").strip()
+    if not expected_slug:
+        raise HTTPException(status_code=400, detail="Kitchen slug is required")
     listing = get_by_id(listing_id)
     if not listing:
         raise HTTPException(status_code=404, detail="Listing not found")
+    actual_slug = str(listing.get("slug") or "").strip()
+    if actual_slug != expected_slug:
+        raise HTTPException(status_code=409, detail="Kitchen identity mismatch")
     token = ensure_listing_preview_token(listing_id)
     if not token:
         raise HTTPException(status_code=500, detail="Could not prepare this kitchen dashboard")
     listing = get_by_id(listing_id) or listing
+    if str(listing.get("slug") or "").strip() != expected_slug:
+        raise HTTPException(status_code=409, detail="Kitchen identity mismatch")
     listing["_preview"] = True
     try:
         log_admin_activity(
@@ -10701,13 +10714,14 @@ def admin_get_view_as_kitchen(listing_id: int, request: Request, key: Optional[s
             listing_id=listing_id,
             customer_no=listing.get("customer_no") or "",
             title=listing.get("name") or f"Listing {listing_id}",
-            details={"admin_view_exact_listing_id": listing_id},
+            details={"admin_view_exact_listing_id": listing_id, "admin_view_slug": expected_slug},
         )
     except Exception:
         pass
     return {
         "ok": True,
         "listing_id": listing_id,
+        "slug": expected_slug,
         "preview_token": token,
         "listing": listing,
     }

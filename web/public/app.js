@@ -4033,7 +4033,9 @@ function pagePreviewCook(listing, token){
   const isPremium = (['business','growth','pro'].includes(normalizePlan(listing.plan)));
   // The /p/:token route normally uses preview_token. For demo convenience we also
   // allow /p/:slug, so prefer the listing's real preview_token for downloads.
-  const dlToken = (listing && listing.preview_token) ? listing.preview_token : token;
+  const dlToken = isAdminView
+    ? (`admin:${String(listing?.id || '')}:${String(listing?.slug || '')}`)
+    : ((listing && listing.preview_token) ? listing.preview_token : token);
 
   if (!state.preview) state.preview = { token:null, active:false, err:null };
   if (!state.preview.tabs) state.preview.tabs = {};
@@ -11737,11 +11739,13 @@ async function loadPreview(token){
   render();
 }
 
-async function loadAdminKitchenView(listingId){
+async function loadAdminKitchenView(listingId, expectedSlug){
   const id = Number(listingId || 0);
-  if (!Number.isInteger(id) || id <= 0) throw new Error('Invalid kitchen identifier');
-  const data = await apiGet(adminUrl(`/api/admin/listings/${id}/view-as`));
-  if (!data || Number(data.listing_id) !== id || !data.listing) {
+  const slug = String(expectedSlug || '').trim();
+  if (!Number.isInteger(id) || id <= 0 || !slug) throw new Error('Invalid kitchen identifier');
+  const data = await apiGet(adminUrl(`/api/admin/listings/${id}/view-as?slug=${encodeURIComponent(slug)}`), { cache: 'no-store' });
+  const returnedSlug = String(data?.listing?.slug || '').trim();
+  if (!data || Number(data.listing_id) !== id || !data.listing || returnedSlug !== slug) {
     throw new Error('Could not verify the selected kitchen');
   }
   const token = String(data.preview_token || '').trim();
@@ -11750,6 +11754,8 @@ async function loadAdminKitchenView(listingId){
   state.preview.active = true;
   state.preview.adminView = true;
   state.preview.adminListingId = id;
+  state.preview.adminListingSlug = slug;
+  state.preview.viewKey = `admin:${id}:${slug}`;
   state.preview.err = null;
   state.__route_err = null;
   state.currentListing = data.listing;
@@ -11963,24 +11969,35 @@ function onRoute(){
     return;
   }
 
-  if (parts[0] === 'admin-view' && parts[1]){
-    // Admin inspection is identified solely by the database listing id.
-    // The backend verifies the admin session and returns that exact listing;
-    // no slug, browser cache or previous dashboard state participates.
+  if (parts[0] === 'admin-view' && parts[1] && parts[2]){
+    // Admin inspection uses the immutable listing id plus the canonical kitchen slug.
+    // The server verifies that both belong to the same row before any dashboard is shown.
     const listingId = Number(decodeURIComponent(parts[1]));
+    const expectedSlug = decodeURIComponent(parts[2]);
     state.preview.active = true;
     state.preview.adminView = true;
     state.preview.adminListingId = listingId;
+    state.preview.adminListingSlug = expectedSlug;
+    state.preview.viewKey = `admin:${listingId}:${expectedSlug}`;
     state.preview.token = null;
     state.preview.err = null;
     state.currentListing = null;
     render();
 
-    loadAdminKitchenView(listingId).catch((e)=>{
+    loadAdminKitchenView(listingId, expectedSlug).catch((e)=>{
       console.error(e);
       state.preview.err = (e && e.message) ? e.message : String(e);
       render();
     });
+    return;
+  }
+
+  if (parts[0] === 'admin-view'){
+    state.preview.active = true;
+    state.preview.adminView = true;
+    state.preview.err = 'This admin kitchen link is incomplete.';
+    state.currentListing = null;
+    render();
     return;
   }
 
@@ -12177,7 +12194,7 @@ function routeView(){
     return pageCook(state.currentListing);
   }
 
-  if ((parts[0] === 'p' && parts[1]) || (parts[0] === 'admin-view' && parts[1])){
+  if ((parts[0] === 'p' && parts[1]) || (parts[0] === 'admin-view' && parts[1] && parts[2])){
     if (!state.currentListing) {
       const err = state.preview && state.preview.err;
       if (err){
@@ -15310,14 +15327,15 @@ function pageAdmin(){
   }
 
   function viewAsKitchen(it){
-    // The selected database id is the only identity used for admin inspection.
-    // The new route asks the server for that exact row and rejects any mismatch.
+    // The route carries both exact database identity and canonical kitchen name.
+    // The server rejects a mismatch instead of ever opening another kitchen.
     const listingId = Number(it && it.id);
-    if (!Number.isInteger(listingId) || listingId <= 0){
-      alert(state.lang==='no'?'Dette kjøkkenet mangler en gyldig identifikator.':'This kitchen is missing a valid identifier.');
+    const slug = String(it && it.slug || '').trim();
+    if (!Number.isInteger(listingId) || listingId <= 0 || !slug){
+      alert(state.lang==='no'?'Dette kjøkkenet mangler gyldig ID eller aktørnavn.':'This kitchen is missing a valid identifier or kitchen name.');
       return;
     }
-    const url = '/admin-view/' + encodeURIComponent(String(listingId));
+    const url = '/admin-view/' + encodeURIComponent(String(listingId)) + '/' + encodeURIComponent(slug);
     window.open(url, '_blank', 'noopener');
   }
 
