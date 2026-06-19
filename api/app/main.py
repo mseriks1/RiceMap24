@@ -52,6 +52,7 @@ from .db import (
     get_by_slug,
     get_by_id,
     get_by_preview_token,
+    ensure_listing_preview_token,
     create_draft,
     update_draft,
     request_activation,
@@ -10677,6 +10678,36 @@ def admin_stripe_simulate(payload: dict, request: Request, key: Optional[str] = 
     except Exception:
         pass
     return {"ok": True, "listing": after, "event_type": event_type, "billing_visibility_changed": changed}
+
+
+@app.post("/api/admin/listings/{listing_id}/view-as")
+def admin_resolve_view_as_kitchen(listing_id: int, request: Request, key: Optional[str] = None):
+    """Resolve the selected listing to its exact dashboard token for admin inspection."""
+    _check_admin(key, request=request)
+    listing = get_by_id(int(listing_id))
+    if not listing:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    token = ensure_listing_preview_token(int(listing_id))
+    if not token:
+        raise HTTPException(status_code=500, detail="Could not prepare this kitchen dashboard")
+    try:
+        log_admin_activity(
+            "view_as_kitchen",
+            entity_type="listing",
+            entity_id=int(listing_id),
+            listing_id=int(listing_id),
+            customer_no=listing.get("customer_no") or "",
+            title=listing.get("name") or f"Listing {listing_id}",
+            details={"preview_token_resolved": True},
+        )
+    except Exception:
+        pass
+    return {
+        "ok": True,
+        "listing_id": int(listing_id),
+        "preview_token": token,
+        "path": "/p/" + token,
+    }
 
 
 @app.post("/api/admin/listings/{listing_id}/update")

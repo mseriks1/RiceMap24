@@ -2934,6 +2934,39 @@ def _ensure_preview_token(conn: sqlite3.Connection) -> str:
             return token
     raise RuntimeError("could not generate unique preview token")
 
+def ensure_listing_preview_token(listing_id: int) -> Optional[str]:
+    """Return a stable dashboard token for one exact listing.
+
+    This is intentionally server-side so admin View as kitchen never depends on a
+    token being present in a previously cached admin-list response. Existing live
+    or imported listings without a token are repaired in-place for that same id.
+    """
+    conn = connect()
+    try:
+        row = conn.execute(
+            "SELECT id, preview_token, data_json FROM listings WHERE id=?",
+            (int(listing_id),),
+        ).fetchone()
+        if not row:
+            return None
+        current = str(row["preview_token"] or "").strip()
+        if current:
+            return current
+        token = _ensure_preview_token(conn)
+        try:
+            payload = json.loads(row["data_json"] or "{}")
+        except Exception:
+            payload = {}
+        payload["preview_token"] = token
+        conn.execute(
+            "UPDATE listings SET preview_token=?, data_json=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+            (token, json.dumps(payload, ensure_ascii=False), int(listing_id)),
+        )
+        conn.commit()
+        return token
+    finally:
+        conn.close()
+
 def upsert_listing(
     conn: sqlite3.Connection,
     listing: Dict[str, Any],
@@ -3014,7 +3047,10 @@ def upsert_listing(
 
 
     token_val = preview_token if preview_token is not None else listing.get("preview_token")
-    if not token_val and pub_val == 0:
+    # Every listing needs a stable dashboard identifier. This is required for owner
+    # access and admin View as kitchen, regardless of whether the listing is live
+    # or still a draft.
+    if not token_val:
         token_val = _ensure_preview_token(conn)
 
     # Mirror meta into JSON for frontend convenience

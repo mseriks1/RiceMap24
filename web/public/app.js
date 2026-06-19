@@ -15269,18 +15269,24 @@ function pageAdmin(){
     return 'RM24-' + String(Math.max(0, Math.floor(n))).padStart(6, '0');
   }
 
-  function viewAsKitchen(it){
-    const token = String((it && it.preview_token) || '').trim();
-    if (!token){
-      alert(state.lang==='no'?'Mangler dashboard-identifikator for dette kjøkkenet.':'This kitchen is missing its dashboard identifier.');
+  async function viewAsKitchen(it){
+    const listingId = Number(it && it.id);
+    if (!Number.isFinite(listingId) || listingId <= 0){
+      alert(state.lang==='no'?'Dette kjøkkenet mangler en gyldig intern ID.':'This kitchen is missing a valid internal ID.');
       return;
     }
-    const url = '/p/' + encodeURIComponent(token) + '?adminView=1';
     try{
-      const key = encodeURIComponent(state.admin.key || '');
-      apiJson('POST', adminUrl('/api/admin/activity/log-view-as-kitchen'), { listing_id: it.id }).catch(()=>{});
-    }catch(e){}
-    window.open(url, '_blank', 'noopener');
+      // Resolve from the server for this exact listing id. Do not rely on stale
+      // admin-list payloads and do not fall back to slug or another kitchen.
+      const resolved = await apiJson('POST', adminUrl(`/api/admin/listings/${listingId}/view-as`), {});
+      const token = String((resolved && resolved.preview_token) || '').trim();
+      if (!token) throw new Error(state.lang==='no' ? 'Kunne ikke klargjøre dette kjøkkenets dashboard.' : 'Could not prepare this kitchen dashboard.');
+      it.preview_token = token;
+      const url = '/p/' + encodeURIComponent(token) + '?adminView=1';
+      window.open(url, '_blank', 'noopener');
+    }catch(e){
+      alert((state.lang==='no'?'Kunne ikke åpne kjøkkenvisningen: ':'Could not open kitchen view: ') + (e.message||e));
+    }
   }
 
   function makeCsv(rows){
