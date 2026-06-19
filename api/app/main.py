@@ -123,7 +123,6 @@ from .db import (
     create_app_session,
     get_user_by_session_token,
     revoke_app_session,
-    revoke_app_sessions_for_user,
     list_app_users,
     record_app_error_log,
     list_app_error_logs,
@@ -387,69 +386,6 @@ def _require_session_user(request: Request, *, roles: Optional[set[str]] = None)
     if roles and user.get("role") not in roles:
         raise HTTPException(status_code=403, detail="Forbidden")
     return user
-
-
-
-def _require_owner_listing_access(request: Request, listing_id: int) -> dict:
-    """Require the authenticated owner for a listing.
-
-    URL tokens/slugs identify a listing only; they never grant owner access.
-    Admin work remains on explicit /api/admin routes.
-    """
-    user = _require_session_user(request, roles={"owner"})
-    try:
-        user_listing_id = int(user.get("listing_id") or 0)
-    except Exception:
-        user_listing_id = 0
-    if not user_listing_id or user_listing_id != int(listing_id):
-        raise HTTPException(status_code=403, detail="This account does not have access to this kitchen")
-    return user
-
-
-def _listing_from_owner_path_token(token: str) -> Optional[dict]:
-    return get_by_preview_token(token) or get_by_slug(token)
-
-
-@app.middleware("http")
-async def owner_authorization_middleware(request: Request, call_next):
-    """Bind every owner/dashboard route to the signed-in owner account.
-
-    /p/<token> is a dashboard locator, not an authentication mechanism.
-    Signed-in admins may use the explicit Admin "View as kitchen" flow for
-    read-only GET/HEAD access. Owner write actions remain bound to the owner.
-    """
-    path = request.url.path or ""
-    listing_id = None
-    if path.startswith("/api/owner/") or path.startswith("/api/preview/"):
-        parts = [part for part in path.split("/") if part]
-        # api / owner-or-preview / token / ...
-        token = parts[2] if len(parts) >= 3 else ""
-        listing = _listing_from_owner_path_token(token)
-        if not listing:
-            return JSONResponse({"detail": "Kitchen not found"}, status_code=404)
-        try:
-            user = _current_user_from_request(request)
-            is_admin_read_only = bool(user and user.get("role") == "admin" and request.method in {"GET", "HEAD"})
-            if not is_admin_read_only:
-                _require_owner_listing_access(request, int(listing.get("id") or 0))
-        except HTTPException as exc:
-            return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
-    elif path.startswith("/api/drafts/") and not (path.rstrip("/") == "/api/drafts"):
-        # Draft read/write/activation routes carry the listing id directly.
-        match = re.match(r"^/api/drafts/(\d+)(?:/|$)", path)
-        if match:
-            try:
-                _require_owner_listing_access(request, int(match.group(1)))
-            except HTTPException as exc:
-                return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
-    elif path == "/api/billing/create-checkout-session":
-        # The route validates the body listing id again below. A session is still
-        # required here so anonymous requests cannot activate another kitchen.
-        try:
-            _require_session_user(request, roles={"owner"})
-        except HTTPException as exc:
-            return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
-    return await call_next(request)
 
 
 def _admin_authorized(request: Optional[Request] = None, key: Optional[str] = None) -> bool:
@@ -8323,26 +8259,11 @@ def geocode(q: str, country: Optional[str] = None):
     return {"ok": False}
 
 
-def _public_listing_view(item: dict) -> dict:
-    """Return only fields intended for the public kitchen page."""
-    public_item = dict(item or {})
-    for key in (
-        "owner_password", "preview_token", "admin_note", "paid_status", "paid_until",
-        "last_payment_at", "stripe_customer_id", "stripe_subscription_id",
-        "stripe_checkout_session_id", "stripe_status", "stripe_price_id",
-        "stripe_current_period_end", "stripe_last_event_at", "pending_activation",
-        "requested_at", "activated_at", "access_type", "access_expires_at",
-        "access_reason", "feature_overrides", "account_status",
-    ):
-        public_item.pop(key, None)
-    return public_item
-
-
 @app.get("/api/listings/{slug}")
 def get_listing(slug: str):
     item = get_by_slug(slug)
     if item and int(item.get("published", 1)) == 1 and int(item.get("plan_active", 1)) == 1:
-        return _public_listing_view(item)
+        return item
     raise HTTPException(status_code=404, detail="Listing not found")
 
 # --- Premium: Customers (CRM light) -------------------------------------------
@@ -9357,15 +9278,12 @@ def _backfill_missing_public_listing_coordinates(limit: int = 40, force: bool = 
 
 # --- Draft / activation ---
 @app.post("/api/drafts")
-def create_listing_draft(payload: dict, request: Request):
+def create_listing_draft(payload: dict):
     """Create a new draft. Returns draft id + preview token."""
     settings = get_admin_settings()
     if not settings.get("public_signups_enabled", True):
         raise HTTPException(status_code=403, detail="Public signups are currently closed")
     try:
-        signup_email = str(((payload or {}).get("contact") or {}).get("email") or "").strip().lower()
-        if signup_email and get_app_user_by_email(signup_email):
-            raise HTTPException(status_code=409, detail="An account already exists with this email. Please log in before creating another kitchen.")
         _id, slug, token = create_draft(payload)
         try:
             item = get_by_id(int(_id))
@@ -9374,23 +9292,26 @@ def create_listing_draft(payload: dict, request: Request):
             email = str(((payload or {}).get("contact") or {}).get("email") or "").strip().lower()
             password = str((payload or {}).get("owner_password") or "")
             display_name = str((payload or {}).get("owner_name") or (payload or {}).get("name") or "Kitchen owner").strip()
-            owner_user = None
             if email and password:
-                owner_user = create_app_user(email, password, display_name=display_name, role="owner", listing_id=int(_id), active=True, email_verified=False)
+                existing_user = get_app_user_by_email(email)
+                if not existing_user:
+                    create_app_user(email, password, display_name=display_name, role="owner", listing_id=int(_id), active=True, email_verified=False)
+                elif existing_user.get("role") == "owner":
+                    # Older staging/test records may have been created before owner accounts were linked.
+                    try:
+                        conn = connect()
+                        try:
+                            conn.execute("UPDATE app_users SET listing_id=?, updated_at=datetime('now') WHERE id=? AND (listing_id IS NULL OR listing_id=0)", (int(_id), int(existing_user.get("id") or 0)))
+                            conn.commit()
+                        finally:
+                            conn.close()
+                    except Exception:
+                        pass
             if item:
                 _queue_owner_template_once(item, "welcome_new_owner", "welcome_new_owner")
         except Exception:
             pass
-        response = JSONResponse({"id": _id, "slug": slug, "preview_token": token})
-        # Registration creates the owner account and immediately establishes the
-        # matching secure session, allowing the checkout flow to continue safely.
-        if 'owner_user' in locals() and owner_user:
-            session_token, _session = create_app_session(
-                int(owner_user["id"]), role="owner", ip=_request_ip(request),
-                user_agent=request.headers.get("user-agent", ""), days=runtime_config.session_days,
-            )
-            response.set_cookie(SESSION_COOKIE_NAME, session_token, **_session_cookie_kwargs())
-        return response
+        return {"id": _id, "slug": slug, "preview_token": token}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -9438,7 +9359,6 @@ async def billing_create_checkout_session(payload: dict, request: Request):
     item = get_by_id(listing_id)
     if not item:
         raise HTTPException(status_code=404, detail='Draft not found')
-    _require_owner_listing_access(request, listing_id)
 
     checkout = _normalize_checkout_payload(pld, item)
     plan = checkout['plan']
@@ -9878,8 +9798,6 @@ async def auth_change_password(payload: dict, request: Request):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     try:
         updated = update_app_user_password(int(user.get("id") or 0), new_password)
-        # Keep this browser signed in, while ending any other active sessions.
-        revoke_app_sessions_for_user(int(updated.get("id") or 0), keep_token=request.cookies.get(SESSION_COOKIE_NAME) or "")
         try:
             log_admin_activity("owner_password_changed", actor=email, entity_type="app_user", entity_id=int(updated.get("id") or 0), listing_id=updated.get("listing_id"), title="Owner changed password", details={"email": email})
         except Exception:
@@ -10848,9 +10766,6 @@ def admin_set_listing_password(listing_id: int, payload: dict, request: Request,
                 user = update_app_user_password(int(existing.get("id") or 0), new_password)
             else:
                 user = create_app_user(email, new_password, display_name=str(listing.get("owner_name") or listing.get("name") or "Kitchen owner"), role="owner", listing_id=listing_id, active=True, email_verified=False)
-        # A reset by the platform administrator must invalidate the owner's
-        # existing sessions so the new password takes effect immediately.
-        revoke_app_sessions_for_user(int(user.get("id") or 0))
         try:
             log_admin_activity("admin_reset_owner_password", entity_type="app_user", entity_id=int(user.get("id") or 0), listing_id=listing_id, customer_no=listing.get("customer_no") or "", title=listing.get("name") or f"Listing {listing_id}", details={"owner_email": user.get("email")})
         except Exception:

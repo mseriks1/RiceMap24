@@ -1210,7 +1210,6 @@ function adminUrl(path){
 async function adminCheckAuth(){
   try{
     const data = await apiGet('/api/auth/me');
-    applyAuthData(data);
     state.admin.authenticated = !!data.authenticated;
     state.admin.authUser = data.user || null;
     state.admin.loginError = '';
@@ -1256,7 +1255,6 @@ async function adminLogin(){
   state.admin.loginBusy = true; state.admin.loginError=''; render();
   try{
     const data = await apiJson('POST', '/api/auth/login', { email, password });
-    applyAuthData(data);
     state.admin.authenticated = true;
     state.admin.authUser = data.user || null;
     state.admin.loginPassword = '';
@@ -1271,7 +1269,7 @@ async function adminLogin(){
   }
 }
 async function adminLogout(){
-  await logoutCurrentSession('/');
+  await logoutCurrentSession('/admin');
 }
 async function adminCreateLocalAdmin(){
   const email = String(state.admin.loginEmail || '').trim();
@@ -2102,7 +2100,7 @@ function topBar(){
       el('div', { class:'topbar-actions' }, [
         isOwnerContext() && ownerDashboardPath() ? button(authT('myDashboard'), { variant:'outline', onclick: ()=>navigate(ownerDashboardPath()), className:'ownerDashboardShortcut' }) : null,
         isAnyUserLoggedIn() ? button(authT('logout'), { variant:'outline', onclick: logoutFromTopbar, className:'ownerLogoutBtn' }) : (!(location.pathname || '').startsWith('/login') ? button(authT('login'), { variant:'outline', onclick: ()=>navigate('/login'), className:'ownerLoginBtn' }) : null),
-        !isOwnerContext() ? button(authT('registerKitchen'), { onclick: ()=>navigate('/list'), className:'registerKitchenBtn' }) : null,
+        !isAnyUserLoggedIn() ? button(authT('registerKitchen'), { onclick: ()=>navigate('/list'), className:'registerKitchenBtn' }) : null,
       ].filter(Boolean))
     ]),
     languageSelect('lang-mobile')
@@ -4145,7 +4143,7 @@ function pagePreviewCook(listing, token){
       el('div', { class:'adminViewBannerInner' }, [
         el('div', {}, [
           el('strong', {}, [state.lang==='no'?'Admin view':'Admin view']),
-          el('span', {}, [(state.lang==='no'?' Du ser kjøkkenets dashboard i skrivebeskyttet adminvisning. ':' You are viewing this kitchen dashboard in read-only admin view. ') + (String(listing?.customer_no||'').trim() || ('#'+String(listing?.id||'')))])
+          el('span', {}, [(state.lang==='no'?' Du ser kjøkkenet slik aktøren ser owner-dashboardet. ':' You are viewing this kitchen as the owner sees the owner dashboard. ') + (String(listing?.customer_no||'').trim() || ('#'+String(listing?.id||'')))])
         ]),
         el('div', { class:'row', style:'gap:8px; flex-wrap:wrap' }, [
           button(state.lang==='no'?'Tilbake til admin':'Back to admin', { variant:'outline', onclick:()=>navigate('/admin') }),
@@ -7527,8 +7525,6 @@ const Y = {
     function accountSettingsCard(){
       const no = state.lang === 'no';
       const ownerState = _ensureOwnerState(token);
-      const viewingAsAdmin = isAdminView && isAdminViewingKitchen();
-      const kitchenAccountEmail = String(listing?.owner_email || listing?.contact_email || listing?.contact?.email || '—');
       return infoCard(dashText('accountSettings'), [
         el('div', { class:'muted' }, [dashText('accountSettingsText')]),
         el('div', { class:'accountControlGrid', style:'margin-top:12px' }, [
@@ -7549,38 +7545,44 @@ const Y = {
             ])
           ])
         ]),
-        el('div', { class:'accountPasswordCallout', id:'owner-password-panel', style:'margin-top:18px' }, viewingAsAdmin ? [
-          el('div', { class:'accountPasswordCalloutTitle' }, [no ? 'Kjøkkenkonto' : 'Kitchen account']),
-          el('div', { class:'accountIdentityRow' }, [
-            el('div', { class:'muted small' }, [no ? 'E-post for denne aktøren' : 'Email for this kitchen']),
-            el('div', { class:'accountIdentityEmail' }, [kitchenAccountEmail])
-          ]),
-          el('div', { class:'accountPasswordDivider' }, []),
-          el('p', { class:'muted small', style:'margin-top:4px' }, [no
-            ? 'Dette er en skrivebeskyttet adminvisning. Endre passord fra Admin access.'
-            : 'This is a read-only admin view. Change the password from Admin access.'
-          ])
-        ] : [
-          el('div', { class:'accountPasswordCalloutTitle' }, [no ? 'Kontosikkerhet' : 'Account security']),
-          el('div', { class:'accountIdentityRow' }, [
-            el('div', { class:'muted small' }, [no ? 'Logget inn som' : 'Signed in as']),
-            el('div', { class:'accountIdentityEmail' }, [String(state.auth?.user?.email || '—')])
-          ]),
-          el('div', { class:'accountPasswordDivider' }, []),
-          el('div', { class:'accountPasswordSectionTitle' }, [no ? 'Endre passord' : 'Change password']),
-          el('p', { class:'muted small', style:'margin-top:4px' }, [no
-            ? 'Velg et nytt passord for kjøkkenkontoen din.'
-            : 'Choose a new password for your kitchen account.'
-          ]),
-          el('div', { class:'accountSecurityGrid', style:'margin-top:14px' }, [
-            el('label', {}, [el('span', { class:'muted small' }, [no?'Nåværende passord':'Current password']), el('input', { class:'input', id:'owner_current_password', type:'password', autocomplete:'current-password' })]),
-            el('label', {}, [el('span', { class:'muted small' }, [no?'Nytt passord':'New password']), el('input', { class:'input', id:'owner_new_password', type:'password', autocomplete:'new-password', placeholder:no?'Minst 6 tegn':'At least 6 characters' })]),
-            el('label', {}, [el('span', { class:'muted small' }, [no?'Gjenta nytt passord':'Repeat new password']), el('input', { class:'input', id:'owner_repeat_password', type:'password', autocomplete:'new-password' })])
-          ]),
-          el('div', { class:'row', style:'gap:10px; margin-top:14px; flex-wrap:wrap' }, [
-            button(no ? 'Oppdater passord' : 'Update password', { variant:'primary', onclick:changeOwnerPassword, disabled:ownerState.savingListing })
-          ])
-        ])
+        (()=>{
+          const contact = (listing && typeof listing.contact === 'object' && listing.contact) ? listing.contact : {};
+          const kitchenEmail = String(listing?.owner_email || listing?.contact_email || contact.email || '—');
+          if (isAdminView){
+            return el('div', { class:'accountPasswordCallout', style:'margin-top:18px' }, [
+              el('div', { class:'accountPasswordCalloutTitle' }, [no ? 'Kontosikkerhet' : 'Account security']),
+              el('div', { class:'accountIdentityRow' }, [
+                el('div', { class:'muted small' }, [no ? 'E-post for dette kjøkkenet' : 'Email for this kitchen']),
+                el('div', { class:'accountIdentityEmail' }, [kitchenEmail])
+              ]),
+              el('p', { class:'muted small', style:'margin-top:14px' }, [no
+                ? 'Passord endres fra Admin access.'
+                : 'Password changes are managed from Admin access.'
+              ])
+            ]);
+          }
+          return el('div', { class:'accountPasswordCallout', id:'owner-password-panel', style:'margin-top:18px' }, [
+            el('div', { class:'accountPasswordCalloutTitle' }, [no ? 'Kontosikkerhet' : 'Account security']),
+            el('div', { class:'accountIdentityRow' }, [
+              el('div', { class:'muted small' }, [no ? 'Logget inn som' : 'Signed in as']),
+              el('div', { class:'accountIdentityEmail' }, [String(state.auth?.user?.email || '—')])
+            ]),
+            el('div', { class:'accountPasswordDivider' }, []),
+            el('div', { class:'accountPasswordSectionTitle' }, [no ? 'Endre passord' : 'Change password']),
+            el('p', { class:'muted small', style:'margin-top:4px' }, [no
+              ? 'Velg et nytt passord for kjøkkenkontoen din.'
+              : 'Choose a new password for your kitchen account.'
+            ]),
+            el('div', { class:'accountSecurityGrid', style:'margin-top:14px' }, [
+              el('label', {}, [el('span', { class:'muted small' }, [no?'Nåværende passord':'Current password']), el('input', { class:'input', id:'owner_current_password', type:'password', autocomplete:'current-password' })]),
+              el('label', {}, [el('span', { class:'muted small' }, [no?'Nytt passord':'New password']), el('input', { class:'input', id:'owner_new_password', type:'password', autocomplete:'new-password', placeholder:no?'Minst 6 tegn':'At least 6 characters' })]),
+              el('label', {}, [el('span', { class:'muted small' }, [no?'Gjenta nytt passord':'Repeat new password']), el('input', { class:'input', id:'owner_repeat_password', type:'password', autocomplete:'new-password' })])
+            ]),
+            el('div', { class:'row', style:'gap:10px; margin-top:14px; flex-wrap:wrap' }, [
+              button(no ? 'Oppdater passord' : 'Update password', { variant:'primary', onclick:changeOwnerPassword, disabled:ownerState.savingListing })
+            ])
+          ]);
+        })()
       ]);
     }
 
@@ -11817,14 +11819,54 @@ function currentOwnerTokenFromRoute(){
 }
 
 function ownerDashboardPath(){
-  // Only a server-verified owner session may open an owner dashboard.
+  // Prefer verified owner session, but also treat the active /p/<token> owner
+  // dashboard route as owner context. This prevents the header from showing
+  // "Log in" while the kitchen owner is already inside the dashboard.
   const od = state.auth && state.auth.authenticated ? state.auth.owner_dashboard : null;
-  const token = od && (od.preview_token || (od.path || '').split('/p/')[1]);
+  const sessionToken = od && (od.preview_token || (od.path || '').split('/p/')[1]);
+  const routeToken = currentOwnerTokenFromRoute();
+  const localToken = hasOwnerSessionLocal() ? getOwnerDashboardToken() : '';
+  const token = sessionToken || routeToken || localToken;
   return token ? ('/p/' + encodeURIComponent(token)) : '';
 }
 
 function isOwnerContext(){
-  return isOwnerLoggedIn();
+  if (isOwnerLoggedIn()) return true;
+  if (currentOwnerTokenFromRoute()) return true;
+  if (hasOwnerSessionLocal() && getOwnerDashboardToken()) return true;
+  return false;
+}
+
+function isAnyUserLoggedIn(){
+  return !!((state.auth && state.auth.authenticated) || (state.admin && state.admin.authenticated));
+}
+
+async function logoutCurrentSession(redirectPath='/'){
+  try { await apiJson('POST', '/api/auth/logout', {}); } catch(_) {}
+  state.auth.checked = true;
+  state.auth.authenticated = false;
+  state.auth.user = null;
+  state.auth.owner_dashboard = null;
+  state.auth.loginPassword = '';
+  state.auth.error = '';
+  state.admin.authenticated = false;
+  state.admin.authUser = null;
+  state.admin.items._loadedOnce = false;
+  try {
+    localStorage.removeItem('rm_owner_dashboard_token');
+    localStorage.removeItem('rm_owner_token');
+    localStorage.removeItem('rm_preview_token');
+    localStorage.removeItem('rm_owner_session_active');
+  } catch(_) {}
+  if (state.ui) {
+    state.ui.ownerDashboardToken = '';
+    state.ui.ownerSessionActive = false;
+  }
+  navigate(redirectPath);
+}
+
+async function logoutFromTopbar(){
+  await logoutCurrentSession('/');
 }
 
 function applyAuthData(data){
@@ -11853,57 +11895,6 @@ async function refreshAuth(){
 
 function isOwnerLoggedIn(){
   return !!(state.auth && state.auth.authenticated && state.auth.owner_dashboard);
-}
-
-function isAdminViewingKitchen(){
-  const params = new URLSearchParams(location.search || '');
-  return !!(
-    params.get('adminView') === '1' &&
-    state.auth && state.auth.authenticated &&
-    state.auth.user && String(state.auth.user.role || '') === 'admin'
-  );
-}
-
-function canOpenOwnerDashboardRoute(){
-  // A kitchen owner can open only their own dashboard. A signed-in admin can
-  // open the explicit read-only "View as kitchen" route from Admin.
-  return isOwnerLoggedIn() || isAdminViewingKitchen();
-}
-
-function isAnyUserLoggedIn(){
-  return !!((state.auth && state.auth.authenticated) || (state.admin && state.admin.authenticated));
-}
-
-function clearSessionUiState(){
-  state.auth.checked = true;
-  state.auth.authenticated = false;
-  state.auth.user = null;
-  state.auth.owner_dashboard = null;
-  state.auth.loginPassword = '';
-  state.auth.error = '';
-  state.admin.authenticated = false;
-  state.admin.authUser = null;
-  state.admin.items._loadedOnce = false;
-  try {
-    localStorage.removeItem('rm_owner_dashboard_token');
-    localStorage.removeItem('rm_owner_token');
-    localStorage.removeItem('rm_preview_token');
-    localStorage.removeItem('rm_owner_session_active');
-  } catch(_) {}
-  if (state.ui) {
-    state.ui.ownerDashboardToken = '';
-    state.ui.ownerSessionActive = false;
-  }
-}
-
-async function logoutCurrentSession(redirectPath='/'){
-  try { await apiJson('POST', '/api/auth/logout', {}); } catch(_) {}
-  clearSessionUiState();
-  navigate(redirectPath);
-}
-
-async function logoutFromTopbar(){
-  await logoutCurrentSession('/');
 }
 
 async function ownerLogout(){
@@ -11954,24 +11945,16 @@ function onRoute(){
   }
 
   if (parts[0] === 'p' && parts[1]){
-    // /p is an authenticated owner dashboard. The token locates the dashboard;
-    // it does not create owner access in this browser.
-    if (!state.auth.checked) {
-      // Wait for the secure session check before deciding whether /p is allowed.
-      render();
-      return;
-    }
-    if (!canOpenOwnerDashboardRoute()) {
-      navigate('/login');
-      return;
-    }
-    const token = parts[1];
+    // A dashboard route must always load the listing identified by this exact
+    // preview token. Clear previous kitchen state before fetching so an admin
+    // cannot briefly or permanently see a different kitchen after switching.
+    const token = decodeURIComponent(parts[1]);
+    setOwnerDashboardToken(token);
+    setOwnerSessionLocal(true);
     state.preview.active = true;
     state.preview.token = token;
     state.preview.err = null;
-    // Do not clear a matching dashboard payload before reloading; it causes a visible blink.
-    const matchesCurrent = state.currentListing && (state.currentListing.preview_token === token || String(state.currentListing.slug || '') === String(token));
-    if (!matchesCurrent) state.currentListing = null;
+    state.currentListing = null;
     render();
 
     loadPreview(token).catch((e)=>{
@@ -15288,13 +15271,11 @@ function pageAdmin(){
 
   function viewAsKitchen(it){
     const token = String((it && it.preview_token) || '').trim();
-    const slug = String((it && it.slug) || '').trim();
-    const lookup = token || slug;
-    if (!lookup){
-      alert(state.lang==='no'?'Mangler preview-token/slug for dette kjøkkenet.':'Missing preview token/slug for this kitchen.');
+    if (!token){
+      alert(state.lang==='no'?'Mangler dashboard-identifikator for dette kjøkkenet.':'This kitchen is missing its dashboard identifier.');
       return;
     }
-    const url = '/p/' + encodeURIComponent(lookup) + '?adminView=1';
+    const url = '/p/' + encodeURIComponent(token) + '?adminView=1';
     try{
       const key = encodeURIComponent(state.admin.key || '');
       apiJson('POST', adminUrl('/api/admin/activity/log-view-as-kitchen'), { listing_id: it.id }).catch(()=>{});
@@ -18457,7 +18438,7 @@ async function boot(){
   // one endpoint is slow during local testing.
   onRoute();
 
-  refreshAuth().then(()=>{ onRoute(); render(); }).catch(()=>{});
+  refreshAuth().then(()=>{ render(); }).catch(()=>{});
 
   if (!window.__rm_scroll_listener){
     window.__rm_scroll_listener = true;

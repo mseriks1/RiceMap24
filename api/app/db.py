@@ -2396,22 +2396,6 @@ def revoke_app_session(token: str) -> bool:
         conn.close()
 
 
-def revoke_app_sessions_for_user(user_id: int, *, keep_token: str = "") -> int:
-    """Revoke a user's sessions after an administrator resets their password."""
-    conn = connect()
-    try:
-        params = [int(user_id)]
-        sql = "UPDATE app_sessions SET revoked_at=datetime('now'), updated_at=datetime('now') WHERE user_id=? AND revoked_at IS NULL"
-        if keep_token:
-            sql += " AND session_token_hash<>?"
-            params.append(_hash_token(keep_token))
-        cur = conn.execute(sql, tuple(params))
-        conn.commit()
-        return int(getattr(cur, "rowcount", 0) or 0)
-    finally:
-        conn.close()
-
-
 def record_login_attempt(email: str, ip: str = "", *, success: bool = False, reason: str = "") -> None:
     conn = connect()
     try:
@@ -2473,44 +2457,6 @@ def list_app_users() -> List[Dict[str, Any]]:
     finally:
         conn.close()
 
-def _migrate_legacy_listing_passwords(conn) -> None:
-    """Move legacy plaintext listing passwords into app_users hashes, then purge them.
-
-    Earlier MVP records stored owner_password inside listings.data_json. This
-    migration runs safely on startup: it creates a missing owner account only
-    when a usable contact email exists, then removes the plaintext field from
-    every listing regardless.
-    """
-    try:
-        rows = conn.execute("SELECT id, data_json FROM listings").fetchall()
-    except Exception:
-        return
-    for row in rows:
-        try:
-            data = json.loads(row["data_json"] or "{}")
-            password = str(data.get("owner_password") or "")
-            if "owner_password" not in data:
-                continue
-            data.pop("owner_password", None)
-            listing_id = int(row["id"])
-            contact = data.get("contact") if isinstance(data.get("contact"), dict) else {}
-            email = str(data.get("owner_email") or data.get("contact_email") or contact.get("email") or "").strip().lower()
-            if password and len(password) >= 6 and email and "@" in email:
-                existing = conn.execute("SELECT id FROM app_users WHERE email=?", (email,)).fetchone()
-                if not existing:
-                    display_name = str(data.get("owner_name") or data.get("name") or "Kitchen owner")[:120]
-                    conn.execute(
-                        """INSERT INTO app_users (email, password_hash, display_name, role, listing_id, active, email_verified, updated_at)
-                           VALUES (?, ?, ?, 'owner', ?, 1, 0, datetime('now'))""",
-                        (email, hash_password(password), display_name, listing_id),
-                    )
-            conn.execute("UPDATE listings SET data_json=?, updated_at=datetime('now') WHERE id=?", (json.dumps(data, ensure_ascii=False), listing_id))
-        except Exception:
-            # A malformed legacy row must never prevent startup. Its plaintext
-            # field is still stripped on the next successful data repair.
-            continue
-
-
 def init_db() -> None:
     conn = connect()
     try:
@@ -2523,7 +2469,6 @@ def init_db() -> None:
         conn.executescript(SCHEMA_SQL)
         conn.commit()
         _migrate(conn)
-        _migrate_legacy_listing_passwords(conn)
         sync_seed_demo_listings(conn)
         conn.commit()
     finally:
@@ -2531,9 +2476,6 @@ def init_db() -> None:
 
 def row_to_listing(row: sqlite3.Row) -> Dict[str, Any]:
     item = json.loads(row["data_json"])
-    # Passwords are never listing data. Older drafts may still contain this
-    # legacy field, but it must not leave the database row through any API.
-    item.pop("owner_password", None)
     # inject meta / db ids for frontend use
     item["id"] = int(row["id"])
     item["customer_no"] = row["customer_no"] if "customer_no" in set(row.keys()) and row["customer_no"] else listing_customer_no(int(row["id"]))
@@ -3904,8 +3846,6 @@ def create_draft(listing: Dict[str, Any]) -> Tuple[int, str, str]:
         settings = get_admin_settings()
         trial_days = int(settings.get("default_trial_days", 0) or 0)
         listing = dict(listing)
-        # Credentials belong only in app_users.password_hash, never data_json.
-        listing.pop("owner_password", None)
         listing["published"] = 0
         listing.setdefault("plan", "basic")
         listing.setdefault("billing", "monthly")
@@ -3953,8 +3893,6 @@ def update_draft(_id: int, listing: Dict[str, Any]) -> None:
             raise KeyError("not found")
 
         listing = dict(listing)
-        # Ignore legacy credential fields from older clients/payloads.
-        listing.pop("owner_password", None)
         listing.setdefault("slug", existing["slug"])
 
         # preserve state flags
