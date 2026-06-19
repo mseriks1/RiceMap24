@@ -415,7 +415,8 @@ async def owner_authorization_middleware(request: Request, call_next):
     """Bind every owner/dashboard route to the signed-in owner account.
 
     /p/<token> is a dashboard locator, not an authentication mechanism.
-    This central guard also covers generated owner documents and future owner routes.
+    Signed-in admins may use the explicit Admin "View as kitchen" flow for
+    read-only GET/HEAD access. Owner write actions remain bound to the owner.
     """
     path = request.url.path or ""
     listing_id = None
@@ -427,7 +428,10 @@ async def owner_authorization_middleware(request: Request, call_next):
         if not listing:
             return JSONResponse({"detail": "Kitchen not found"}, status_code=404)
         try:
-            _require_owner_listing_access(request, int(listing.get("id") or 0))
+            user = _current_user_from_request(request)
+            is_admin_read_only = bool(user and user.get("role") == "admin" and request.method in {"GET", "HEAD"})
+            if not is_admin_read_only:
+                _require_owner_listing_access(request, int(listing.get("id") or 0))
         except HTTPException as exc:
             return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
     elif path.startswith("/api/drafts/") and not (path.rstrip("/") == "/api/drafts"):

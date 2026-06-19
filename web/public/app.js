@@ -4145,7 +4145,7 @@ function pagePreviewCook(listing, token){
       el('div', { class:'adminViewBannerInner' }, [
         el('div', {}, [
           el('strong', {}, [state.lang==='no'?'Admin view':'Admin view']),
-          el('span', {}, [(state.lang==='no'?' Du ser kjøkkenet slik aktøren ser owner-dashboardet. ':' You are viewing this kitchen as the owner sees the owner dashboard. ') + (String(listing?.customer_no||'').trim() || ('#'+String(listing?.id||'')))])
+          el('span', {}, [(state.lang==='no'?' Du ser kjøkkenets dashboard i skrivebeskyttet adminvisning. ':' You are viewing this kitchen dashboard in read-only admin view. ') + (String(listing?.customer_no||'').trim() || ('#'+String(listing?.id||'')))])
         ]),
         el('div', { class:'row', style:'gap:8px; flex-wrap:wrap' }, [
           button(state.lang==='no'?'Tilbake til admin':'Back to admin', { variant:'outline', onclick:()=>navigate('/admin') }),
@@ -11842,6 +11842,21 @@ function isOwnerLoggedIn(){
   return !!(state.auth && state.auth.authenticated && state.auth.owner_dashboard);
 }
 
+function isAdminViewingKitchen(){
+  const params = new URLSearchParams(location.search || '');
+  return !!(
+    params.get('adminView') === '1' &&
+    state.auth && state.auth.authenticated &&
+    state.auth.user && String(state.auth.user.role || '') === 'admin'
+  );
+}
+
+function canOpenOwnerDashboardRoute(){
+  // A kitchen owner can open only their own dashboard. A signed-in admin can
+  // open the explicit read-only "View as kitchen" route from Admin.
+  return isOwnerLoggedIn() || isAdminViewingKitchen();
+}
+
 function isAnyUserLoggedIn(){
   return !!((state.auth && state.auth.authenticated) || (state.admin && state.admin.authenticated));
 }
@@ -11933,7 +11948,7 @@ function onRoute(){
       render();
       return;
     }
-    if (!isOwnerLoggedIn()) {
+    if (!canOpenOwnerDashboardRoute()) {
       navigate('/login');
       return;
     }
