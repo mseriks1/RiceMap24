@@ -5860,27 +5860,38 @@ html, body { max-width:100%; overflow-x:hidden; }
   .accountSecurityGrid{ grid-template-columns:1fr; }
 }
 
-/* Step 9.92 — make owner password change impossible to miss inside Account settings */
+/* Step 9.93 — compact account security section inside Account settings. */
 .accountPasswordCallout{
-  border:2px solid rgba(20,74,45,.24);
-  border-radius:24px;
-  padding:22px;
-  background:linear-gradient(135deg,#f7fbf4 0%,#fffaf1 100%);
-  box-shadow:0 16px 40px rgba(20,45,32,.08);
+  border:1px solid rgba(20,74,45,.18);
+  border-radius:18px;
+  padding:18px;
+  background:#fbfdf9;
 }
-.accountPasswordCalloutHeader{
+.accountPasswordCalloutTitle,
+.accountPasswordSectionTitle{
+  color:#173f29;
+  font-size:15px;
+  font-weight:950;
+  line-height:1.16;
+  letter-spacing:-.2px;
+}
+.accountIdentityRow{
   display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:14px;
+  align-items:baseline;
+  gap:8px;
   flex-wrap:wrap;
+  margin-top:7px;
 }
-.accountPasswordCallout h3{
-  margin:4px 0 0;
-  font-size:clamp(26px,2.4vw,38px);
-  line-height:1.05;
-  color:#123f26;
-  letter-spacing:-.035em;
+.accountIdentityEmail{
+  color:#173f29;
+  font-size:14px;
+  font-weight:800;
+  overflow-wrap:anywhere;
+}
+.accountPasswordDivider{
+  height:1px;
+  margin:15px 0 13px;
+  background:rgba(20,74,45,.13);
 }
 .accountPasswordCallout .input{
   background:#fff;
