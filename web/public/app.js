@@ -18554,15 +18554,25 @@ async function boot(){
 
   loadMapListings();
 
-  // Set a default listing only for pages that need it (e.g. /example), but never
-  // block initial rendering on this.
+  // A default listing is only needed by the isolated /example route.
+  // Do NOT load one for admin-view, owner dashboard, public kitchen, admin, login,
+  // or portal routes: this asynchronous request can otherwise arrive after the
+  // route-specific request and overwrite the kitchen that was explicitly selected.
   const path = location.pathname;
   const parts = path.split('/').filter(Boolean);
-  const isCookRoute = (parts[0] === 'c' && parts[1]);
-  if (!isCookRoute && state.listings.length > 0 && !state.currentListing){
-    apiGet(`/api/listings/${state.listings[0].slug}`, { timeoutMs: 8000 })
-      .then(x=>{ state.currentListing = x; render(); })
-      .catch(e=>{ console.error('default listing load failed', e); });
+  const isExampleRoute = (parts[0] === 'example');
+  if (isExampleRoute && state.listings.length > 0 && !state.currentListing){
+    const exampleSlug = String(state.listings[0]?.slug || '').trim();
+    if (exampleSlug){
+      apiGet(`/api/listings/${encodeURIComponent(exampleSlug)}`, { timeoutMs: 8000 })
+        .then(x=>{
+          // Keep this response bound to /example in case the user navigated away.
+          if (location.pathname !== '/example') return;
+          state.currentListing = x;
+          render();
+        })
+        .catch(e=>{ console.error('example listing load failed', e); });
+    }
   }
 
   render();
