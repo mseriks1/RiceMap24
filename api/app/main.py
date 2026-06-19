@@ -10680,6 +10680,39 @@ def admin_stripe_simulate(payload: dict, request: Request, key: Optional[str] = 
     return {"ok": True, "listing": after, "event_type": event_type, "billing_visibility_changed": changed}
 
 
+@app.get("/api/admin/listings/{listing_id}/view-as")
+def admin_get_view_as_kitchen(listing_id: int, request: Request, key: Optional[str] = None):
+    """Return the exact selected listing for the read-only admin kitchen view."""
+    _check_admin(key, request=request)
+    listing_id = int(listing_id)
+    listing = get_by_id(listing_id)
+    if not listing:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    token = ensure_listing_preview_token(listing_id)
+    if not token:
+        raise HTTPException(status_code=500, detail="Could not prepare this kitchen dashboard")
+    listing = get_by_id(listing_id) or listing
+    listing["_preview"] = True
+    try:
+        log_admin_activity(
+            "view_as_kitchen",
+            entity_type="listing",
+            entity_id=listing_id,
+            listing_id=listing_id,
+            customer_no=listing.get("customer_no") or "",
+            title=listing.get("name") or f"Listing {listing_id}",
+            details={"admin_view_exact_listing_id": listing_id},
+        )
+    except Exception:
+        pass
+    return {
+        "ok": True,
+        "listing_id": listing_id,
+        "preview_token": token,
+        "listing": listing,
+    }
+
+
 @app.post("/api/admin/listings/{listing_id}/view-as")
 def admin_resolve_view_as_kitchen(listing_id: int, request: Request, key: Optional[str] = None):
     """Resolve the selected listing to its exact dashboard token for admin inspection."""
