@@ -85,6 +85,17 @@ class PgConnection:
     def __init__(self, conn):
         self._conn = conn
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        try:
+            if exc_type is not None:
+                self.rollback()
+        finally:
+            self.close()
+        return False
+
     def close(self):
         return self._conn.close()
 

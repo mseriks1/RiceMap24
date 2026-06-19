@@ -4031,11 +4031,11 @@ function pagePreviewCook(listing, token){
   const isAdminView = (location.pathname || '').split('/').filter(Boolean)[0] === 'admin-view';
 
   const isPremium = (['business','growth','pro'].includes(normalizePlan(listing.plan)));
-  // The /p/:token route normally uses preview_token. For demo convenience we also
-  // allow /p/:slug, so prefer the listing's real preview_token for downloads.
-  const dlToken = isAdminView
-    ? (`admin:${String(listing?.id || '')}:${String(listing?.slug || '')}`)
-    : ((listing && listing.preview_token) ? listing.preview_token : token);
+  // Every owner-content API call must use the kitchen's real dashboard token.
+  // Admin view is only a read-only presentation mode; it is not an owner token.
+  // Using an admin-prefixed UI key here made Masterclass, Coach and announcements
+  // request /api/owner/admin:... and left their content stuck loading.
+  const dlToken = (listing && listing.preview_token) ? listing.preview_token : token;
 
   if (!state.preview) state.preview = { token:null, active:false, err:null };
   if (!state.preview.tabs) state.preview.tabs = {};
@@ -11730,7 +11730,17 @@ async function loadListing(slug){
   render();
 }
 
+function resetOwnerLearningStateForToken(token){
+  const key = String(token || '');
+  if (!key || state.preview.learningToken === key) return;
+  state.preview.learningToken = key;
+  state.masterclass = { loading:false, loaded:false, items:[], plan:'basic', counts:null, current:null, subscriptionMonth:null, selectedId:null, selected:null, loadingDetail:false, error:'', detailError:'' };
+  state.marketingCoach = { loading:false, loaded:false, items:[], plan:'basic', counts:null, selectedId:null, selected:null, loadingDetail:false, error:'', detailError:'' };
+  state.businessCoach = { loading:false, loaded:false, items:[], plan:'basic', counts:null, selectedId:null, selected:null, loadingDetail:false, error:'', detailError:'' };
+}
+
 async function loadPreview(token){
+  resetOwnerLearningStateForToken(token);
   state.preview.token = token;
   state.preview.active = true;
   state.preview.err = null;
@@ -11764,6 +11774,7 @@ async function loadAdminKitchenView(listingId, expectedSlug){
   const token = String(data.preview_token || '').trim();
   if (!token) throw new Error('Could not prepare this kitchen dashboard');
 
+  resetOwnerLearningStateForToken(token);
   state.preview.token = token;
   state.preview.active = true;
   state.preview.adminView = true;
