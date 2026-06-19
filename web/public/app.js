@@ -4225,7 +4225,7 @@ function pagePreviewCook(listing, token){
       const payload = stripDemoImagesFromListingPayload(JSON.parse(JSON.stringify(d)));
       delete payload._id;
       await apiJson('POST', `/api/owner/${encodeURIComponent(dlToken)}/save`, payload);
-      const fresh = await apiGet(`/api/preview/${encodeURIComponent(dlToken)}`);
+      const fresh = await apiGet(previewApiUrl(dlToken));
       state.currentListing = fresh?.listing || fresh || state.currentListing;
       o.editListing = JSON.parse(JSON.stringify(state.currentListing || {}));
       o.editListing._id = state.currentListing?.id;
@@ -4849,7 +4849,7 @@ const Y = {
           o.saveNotice = state.lang==='no' ? 'Bilde lagret.' : 'Image saved.';
         } else {
           // Normal manual save still verifies server state and refreshes Explore/map data.
-          const fresh = await apiGet(`/api/preview/${encodeURIComponent(dlToken)}`, { timeoutMs: 12000 });
+          const fresh = await apiGet(previewApiUrl(dlToken), { timeoutMs: 12000 });
           state.currentListing = fresh?.listing || fresh || state.currentListing;
           await refreshListingCollections();
           // refresh edit buffer only after manual full save, not after silent image save
@@ -4882,7 +4882,7 @@ const Y = {
       render();
       try{
         await apiJson('POST', `/api/owner/${encodeURIComponent(dlToken)}/publish`, { published: !!nextPublished });
-        const fresh = await apiGet(`/api/preview/${encodeURIComponent(dlToken)}`);
+        const fresh = await apiGet(previewApiUrl(dlToken));
         state.currentListing = fresh?.listing || fresh || state.currentListing;
         await refreshListingCollections();
         o.editListing = JSON.parse(JSON.stringify(state.currentListing || {}));
@@ -11715,12 +11715,18 @@ async function loadListing(slug){
   render();
 }
 
+function previewApiUrl(token){
+  const isAdminView = new URLSearchParams(location.search).get('adminView') === '1';
+  const suffix = isAdminView ? '?admin_view=1' : '';
+  return `/api/preview/${encodeURIComponent(token)}${suffix}`;
+}
+
 async function loadPreview(token){
   state.preview.token = token;
   state.preview.active = true;
   state.preview.err = null;
   state.__route_err = null;
-  state.currentListing = await apiGet(`/api/preview/${token}`);
+  state.currentListing = await apiGet(previewApiUrl(token));
   render();
 }
 
@@ -11806,22 +11812,15 @@ function currentOwnerTokenFromRoute(){
 }
 
 function ownerDashboardPath(){
-  // Prefer verified owner session, but also treat the active /p/<token> owner
-  // dashboard route as owner context. This prevents the header from showing
-  // "Log in" while the kitchen owner is already inside the dashboard.
+  // A dashboard location is derived only from a verified server session.
+  // URL/localStorage tokens are navigation hints, never proof of ownership.
   const od = state.auth && state.auth.authenticated ? state.auth.owner_dashboard : null;
-  const sessionToken = od && (od.preview_token || (od.path || '').split('/p/')[1]);
-  const routeToken = currentOwnerTokenFromRoute();
-  const localToken = hasOwnerSessionLocal() ? getOwnerDashboardToken() : '';
-  const token = sessionToken || routeToken || localToken;
+  const token = od && (od.preview_token || (od.path || '').split('/p/')[1]);
   return token ? ('/p/' + encodeURIComponent(token)) : '';
 }
 
 function isOwnerContext(){
-  if (isOwnerLoggedIn()) return true;
-  if (currentOwnerTokenFromRoute()) return true;
-  if (hasOwnerSessionLocal() && getOwnerDashboardToken()) return true;
-  return false;
+  return isOwnerLoggedIn();
 }
 
 function applyAuthData(data){
@@ -11917,11 +11916,32 @@ function onRoute(){
   }
 
   if (parts[0] === 'p' && parts[1]){
-    // Store the owner token locally so logged-in kitchen owners can return to their dashboard
-    // from Explore/public pages without relying on the browser Back button.
     const token = parts[1];
-    setOwnerDashboardToken(token);
-    setOwnerSessionLocal(true);
+    // Do not treat a dashboard URL as a login. Wait for the server-backed
+    // session check, then allow only the linked owner account or Admin view.
+    if (!state.auth.checked){
+      state.preview.active = false;
+      state.preview.err = null;
+      render();
+      return;
+    }
+    const user = state.auth.user || {};
+    const isAdmin = state.auth.authenticated && user.role === 'admin';
+    const isExplicitAdminView = new URLSearchParams(location.search).get('adminView') === '1';
+    const ownedToken = state.auth.owner_dashboard && state.auth.owner_dashboard.preview_token;
+    if (!state.auth.authenticated){
+      navigate('/login');
+      return;
+    }
+    if (isAdmin && !isExplicitAdminView){
+      navigate('/admin');
+      return;
+    }
+    if (!isAdmin && String(ownedToken || '') !== String(token || '')){
+      const ownPath = ownerDashboardPath();
+      navigate(ownPath || '/login');
+      return;
+    }
     state.preview.active = true;
     state.preview.token = token;
     state.preview.err = null;
@@ -12328,7 +12348,7 @@ async function ownerSaveDishCrop(token, dishKey, focalX, focalY, zoom){
   await apiJson('POST', `/api/owner/${encodeURIComponent(token)}/dish_crop`, payload);
   // Refresh preview listing so thumbnails and modal reflect saved crop.
   if (state.preview && state.preview.active && state.preview.token && String(state.preview.token)===String(token)){
-    state.currentListing = await apiGet(`/api/preview/${encodeURIComponent(token)}`);
+    state.currentListing = await apiGet(previewApiUrl(token));
     render();
   }
 }
@@ -18413,7 +18433,7 @@ async function boot(){
   // one endpoint is slow during local testing.
   onRoute();
 
-  refreshAuth().then(()=>{ render(); }).catch(()=>{});
+  refreshAuth().then(()=>{ onRoute(); }).catch(()=>{});
 
   if (!window.__rm_scroll_listener){
     window.__rm_scroll_listener = true;

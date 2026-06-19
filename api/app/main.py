@@ -8268,18 +8268,44 @@ def get_listing(slug: str):
 
 # --- Premium: Customers (CRM light) -------------------------------------------
 
-def _resolve_owner_listing(token: str) -> dict:
-    """Resolve token to listing.
+def _resolve_owner_listing(token: str, request: Optional[Request] = None) -> dict:
+    """Resolve an owner dashboard token and, when a request is supplied, enforce ownership.
 
-    Token is normally preview_token, but for demo convenience we also accept a
-    published slug.
+    ``preview_token`` remains an internal dashboard locator for compatibility with
+    existing owner URLs. It is no longer an access credential: every browser
+    request to ``/api/owner/...`` is checked against the signed-in session by the
+    middleware below. Platform admins may access a kitchen only through their
+    authenticated admin session.
     """
     listing = get_by_preview_token(token) or get_by_slug(token)
     if not listing:
         raise HTTPException(status_code=404, detail="Preview token not found")
     if token == listing.get("slug") and int(listing.get("published", 0)) != 1:
         raise HTTPException(status_code=404, detail="Preview token not found")
+    if request is not None:
+        user = _require_session_user(request, roles={"owner", "admin"})
+        if str(user.get("role") or "") != "admin":
+            owner_listing_id = user.get("listing_id")
+            if owner_listing_id is None or int(owner_listing_id) != int(listing.get("id") or 0):
+                raise HTTPException(status_code=403, detail="This dashboard belongs to a different kitchen account")
     return listing
+
+
+@app.middleware("http")
+async def owner_api_authorization_middleware(request: Request, call_next):
+    """Apply one session/ownership gate to every owner API endpoint.
+
+    Keeping this at the route-family boundary prevents a future owner endpoint
+    from accidentally treating a URL token as permission.
+    """
+    path = request.url.path or ""
+    match = re.match(r"^/api/owner/([^/]+)(?:/|$)", path)
+    if match:
+        try:
+            _resolve_owner_listing(match.group(1), request)
+        except HTTPException as exc:
+            return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+    return await call_next(request)
 
 
 @app.get("/api/owner/{token}/announcements")
@@ -9171,17 +9197,12 @@ def owner_transactions_csv(token: str,
 
 # --- Preview (shareable draft link) ---
 @app.get("/api/preview/{token}")
-def get_preview(token: str):
-    # Token is normally preview_token. For demo convenience, also accept a slug
-    # for published listings (lets you type /p/:slug and still see the preview page).
-    item = get_by_preview_token(token)
-    if not item:
-        item = get_by_slug(token)
-        if item and int(item.get("published", 0)) != 1:
-            item = None
-    if not item:
-        raise HTTPException(status_code=404, detail="Preview not found")
-    # preview is allowed for drafts + live
+def get_preview(token: str, request: Request, admin_view: int = 0):
+    """Return a dashboard payload only to its signed-in owner or an explicit admin view."""
+    user = _require_session_user(request, roles={"owner", "admin"})
+    if str(user.get("role") or "") == "admin" and int(admin_view or 0) != 1:
+        raise HTTPException(status_code=403, detail="Open kitchen dashboards from Admin")
+    item = _resolve_owner_listing(token, request)
     item["_preview"] = True
     return item
 
